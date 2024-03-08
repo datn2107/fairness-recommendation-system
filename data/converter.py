@@ -143,6 +143,21 @@ class DataConversion:
         """
         return np.argsort(S, axis=1)[:, ::-1]
 
+    @staticmethod
+    def max_min_normalize(S: np.ndarray) -> np.ndarray:
+        """
+        Normalize the input matrix S to the range [0, 1].
+
+        Parameters:
+        S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
+
+        Returns:
+        np.ndarray: The normalized score matrix of shape (n_users, n_items).
+        """
+        return (S - np.expand_dims(np.min(S, 1), axis=1)) / np.expand_dims(
+            np.max(S, 1) - np.min(S, 1), axis=1
+        ) + 1e-6
+
 
 if __name__ == "__main__":
     print("Test Data Conversion Strategy Pattern Design.")

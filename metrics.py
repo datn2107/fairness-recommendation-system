@@ -2,7 +2,7 @@ import numpy as np
 from typing import List
 import sklearn.metrics as metrics
 
-from data import DataConversion
+from data.converter import DataConversion
 
 
 class Metrics:
@@ -58,7 +58,7 @@ class Metrics:
         Returns:
         float: The MAP score.
         """
-        S = DataConversion.convert_score_matrix_to_rank_matrix(S) <= k
+        S = DataConversion.convert_score_matrix_to_rank_matrix(S) < k
         return np.mean(np.sum(S * R, axis=1) / k)
 
     @staticmethod
@@ -91,7 +91,7 @@ class Metrics:
         """
         assert len(groups) == 2, "The number of groups must be 2."
 
-        B = DataConversion.convert_score_matrix_to_rank_matrix(S) <= k
+        B = DataConversion.convert_score_matrix_to_rank_matrix(S) < k
 
         cnt = np.sum(B, axis=0) / B.shape[0]
         cnt_g = [np.sum(cnt[g]) / len(g) for g in groups]
@@ -112,7 +112,7 @@ class Metrics:
         float: The MDG score for each item.
         """
         matrix_rank = DataConversion.convert_score_matrix_to_rank_matrix(S)
-        matrix_rank = matrix_rank * (matrix_rank <= k) * R
+        matrix_rank = matrix_rank * (matrix_rank < k) * R
 
         return np.mean(np.log2(matrix_rank + 2), axis=0)
 
@@ -137,6 +137,58 @@ class Metrics:
 
         return np.mean(items_mdg[partition_idx])
 
+    @staticmethod
+    def precision_score(R: np.ndarray, S: np.ndarray, k: int = 30) -> float:
+        """
+        Calculate the precision score.
+
+        Parameters:
+        R (np.ndarray): The binary relevance score matrix of shape (n_users, n_items).
+        S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
+        k (int): The number of items to consider for each user. Default is 30.
+
+        Returns:
+        float: The precision score.
+        """
+        B = DataConversion.convert_score_matrix_to_rank_matrix(S) < k
+
+        return np.mean(np.sum(B * R, axis=1) / k)
+
+    @staticmethod
+    def recall_score(R: np.ndarray, S: np.ndarray, k: int = 30) -> float:
+        """
+        Calculate the recall score.
+
+        Parameters:
+        R (np.ndarray): The binary relevance score matrix of shape (n_users, n_items).
+        S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
+        k (int): The number of items to consider for each user. Default is 30.
+
+        Returns:
+        float: The recall score.
+        """
+        B = DataConversion.convert_score_matrix_to_rank_matrix(S) < k
+
+        return np.mean(np.sum(B * R, axis=1) / np.sum(R, axis=1))
+
+    @staticmethod
+    def f1_score(R: np.ndarray, S: np.ndarray, k: int = 30) -> float:
+        """
+        Calculate the F1 score.
+
+        Parameters:
+        R (np.ndarray): The binary relevance score matrix of shape (n_users, n_items).
+        S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
+        k (int): The number of items to consider for each user. Default is 30.
+
+        Returns:
+        float: The F1 score.
+        """
+        precision = Metrics.precision_score(R, S, k)
+        recall = Metrics.recall_score(R, S, k)
+
+        return 2 * (precision * recall) / (precision + recall)
+
 
 if __name__ == "__main__":
     R = np.array([[1, 0, 1, 0, 1], [0, 1, 0, 1, 0]])
@@ -154,3 +206,7 @@ if __name__ == "__main__":
     print(Metrics.mdg_score_each_item(R, S))
     print(Metrics.mdg_score(Metrics.mdg_score_each_item(R, S), 0.1))
     print(Metrics.mdg_score(Metrics.mdg_score_each_item(R, S), -0.1))
+
+    print(Metrics.precision_score(R, S, k=2))
+    print(Metrics.recall_score(R, S, k=2))
+    print(Metrics.f1_score(R, S, k=2))
