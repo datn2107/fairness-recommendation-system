@@ -2,10 +2,10 @@ import numpy as np
 from abc import ABC, abstractmethod
 
 
-class DataConversionStrategy(ABC):
+class DataConverterStrategy(ABC):
     @abstractmethod
     def convert_to_relevance_matrix(
-        self, data: np.ndarray, k: int = 30, rank_relevance: bool = False
+        self, data: np.ndarray, k: int = 30, rank_relevance: bool = False, **kwargs
     ) -> np.ndarray:
         """
         Convert the rank matrix to relevance matrix based on the input relevance matrix R.
@@ -21,9 +21,9 @@ class DataConversionStrategy(ABC):
         raise NotImplementedError
 
 
-class RankMatrixConversionStrategy(DataConversionStrategy):
+class RankMatrixConverterStrategy(DataConverterStrategy):
     def convert_to_relevance_matrix(
-        self, data: np.ndarray, k: int = 30, rank_relevance: bool = False
+        self, data: np.ndarray, k: int = 30, rank_relevance: bool = False, **kwargs
     ) -> np.ndarray:
         """
         Convert the rank matrix to relevance matrix based on the input relevance matrix R.
@@ -46,9 +46,9 @@ class RankMatrixConversionStrategy(DataConversionStrategy):
         return relevance_matrix.astype(np.int32)
 
 
-class TopItemMatrixConversionStrategy(DataConversionStrategy):
+class TopItemMatrixConverterStrategy(DataConverterStrategy):
     def convert_to_relevance_matrix(
-        self, data: np.ndarray, k: int = 30, rank_relevance: bool = False
+        self, data: np.ndarray, k: int = 30, rank_relevance: bool = False, **kwargs
     ) -> np.ndarray:
         """
         Convert the top item matrix to relevance matrix based on the input relevance matrix R.
@@ -75,24 +75,48 @@ class TopItemMatrixConversionStrategy(DataConversionStrategy):
         return relevance_matrix.astype(np.int32)
 
 
-class DataConversion:
+class InteractionDataConverterStrategy(DataConverterStrategy):
+    def convert_to_relevance_matrix(self, data: np.ndarray, k: int = 30, rank_relevance: bool = False, **kwargs) -> np.ndarray:
+        """
+        Convert the interaction data to relevance matrix based on the input relevance matrix R.
+
+        Parameters:
+        data (np.ndarray): The list of interaction data (user, item).
+        k (int): The number of items to consider for each user. Default is 30. (Only use for binary relevance score)
+        rank_relevance (bool): Whether to use the rank or binary as relevance score. Default is False.
+        **kwargs: The additional arguments
+            n_users (int): The number of users.
+            n_items (int): The number of items.
+
+        Returns:
+        np.ndarray: The relevance score matrix of shape (n_users, n_items).
+        """
+        n_users, n_items = int(kwargs["n_users"]), int(kwargs["n_items"])
+        R = np.zeros((n_users, n_items), dtype=np.int32)
+        for user, item in data:
+            R[user, item] = 1
+
+        return R
+
+
+class DataConverter:
     """
     Strategy Pattern Design for Data Conversion.
     """
 
     DataConvertStrategy = None
 
-    def __init__(self, strategy: DataConversionStrategy = None):
+    def __init__(self, strategy: DataConverterStrategy = None):
         self.DataConvertStrategy = strategy
 
-    def set_strategy(self, strategy: DataConversionStrategy):
+    def set_strategy(self, strategy: DataConverterStrategy):
         self.DataConvertStrategy = strategy
 
     def convert_to_relevance_matrix(
-        self, data: np.ndarray, k: int = 30, rank_relevance: bool = False
+        self, data: np.ndarray, k: int = 30, rank_relevance: bool = False, **kwargs
     ) -> np.ndarray:
         return self.DataConvertStrategy.convert_to_relevance_matrix(
-            data, k, rank_relevance
+            data, k, rank_relevance, **kwargs
         )
 
     @staticmethod
@@ -159,31 +183,32 @@ class DataConversion:
         ) + 1e-6
 
 
+
 if __name__ == "__main__":
     print("Test Data Conversion Strategy Pattern Design.")
 
     S = np.array([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.4, 0.3, 0.2, 0.1]])
 
-    rank_matrix = DataConversion.convert_score_matrix_to_rank_matrix(S)
-    top_item_matrix = DataConversion.convert_score_matrix_to_top_item_matrix(S)
+    rank_matrix = DataConverter.convert_score_matrix_to_rank_matrix(S)
+    top_item_matrix = DataConverter.convert_score_matrix_to_top_item_matrix(S)
 
     print(rank_matrix)
     print(top_item_matrix)
     print()
 
-    context = DataConversion(RankMatrixConversionStrategy())
+    context = DataConverter(RankMatrixConverterStrategy())
     print(context.convert_to_relevance_matrix(rank_matrix, k=2, rank_relevance=True))
 
-    context.set_strategy(TopItemMatrixConversionStrategy())
+    context.set_strategy(TopItemMatrixConverterStrategy())
     print(
         context.convert_to_relevance_matrix(top_item_matrix, k=2, rank_relevance=True)
     )
 
     print()
-    context.set_strategy(RankMatrixConversionStrategy())
+    context.set_strategy(RankMatrixConverterStrategy())
     print(context.convert_to_relevance_matrix(rank_matrix, k=2, rank_relevance=False))
 
-    context.set_strategy(TopItemMatrixConversionStrategy())
+    context.set_strategy(TopItemMatrixConverterStrategy())
     print(
         context.convert_to_relevance_matrix(top_item_matrix, k=2, rank_relevance=False)
     )

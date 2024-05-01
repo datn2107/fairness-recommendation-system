@@ -2,7 +2,10 @@ import numpy as np
 from typing import List
 import sklearn.metrics as metrics
 
-from data.converter import DataConversion
+from data.converter import DataConverter
+
+
+EPSILON = 1e-10
 
 
 class Metrics:
@@ -58,7 +61,7 @@ class Metrics:
         Returns:
         float: The MAP score.
         """
-        S = DataConversion.convert_score_matrix_to_rank_matrix(S) < k
+        B = DataConverter.convert_score_matrix_to_rank_matrix(S) < k
         return np.mean(np.sum(S * R, axis=1) / k)
 
     @staticmethod
@@ -91,7 +94,7 @@ class Metrics:
         """
         assert len(groups) == 2, "The number of groups must be 2."
 
-        B = DataConversion.convert_score_matrix_to_rank_matrix(S) < k
+        B = DataConverter.convert_score_matrix_to_rank_matrix(S) < k
 
         cnt = np.sum(B, axis=0) / B.shape[0]
         cnt_g = [np.sum(cnt[g]) / len(g) for g in groups]
@@ -111,23 +114,31 @@ class Metrics:
         Returns:
         float: The MDG score for each item.
         """
-        matrix_rank = DataConversion.convert_score_matrix_to_rank_matrix(S)
-        matrix_rank = matrix_rank * (matrix_rank < k) * R
+        matrix_rank = DataConverter.convert_score_matrix_to_rank_matrix(S)
+        matrix_rank = matrix_rank * (matrix_rank < k)
 
-        return np.mean(np.log2(matrix_rank + 2), axis=0)
+        return np.mean(R / np.log2(matrix_rank + 2), axis=0)
 
     @staticmethod
-    def mdg_score(items_mdg: np.array, p: float) -> float:
+    def mdg_score(p: float, R: np.ndarray = None, S: np.ndarray = None, k: int = 30,  items_mdg: np.array = None) -> float:
         """
         Calculate the mean discounted gain (MDG) score.
 
         Parameters:
+        R (np.ndarray): The binary relevance score matrix of shape (n_users, n_items).
+        S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
+        k (int): The number of items to consider for each user. Default is 30.
         items_mdg (np.array): The MDG score for each item.
         p (float): The proportion of items to consider.
 
         Returns:
         float: The MDG score.
         """
+        if items_mdg is None:
+            if R is None or S is None:
+                raise ValueError("R, S or items_mdg must be provided.")
+            items_mdg = Metrics.mdg_score_each_item(R, S, k)
+
         n_item = items_mdg.shape[0]
         k = int(n_item * p)
         if k > 0:
@@ -150,9 +161,14 @@ class Metrics:
         Returns:
         float: The precision score.
         """
-        B = DataConversion.convert_score_matrix_to_rank_matrix(S) < k
+        B = DataConverter.convert_score_matrix_to_rank_matrix(S) < k
 
-        return np.mean(np.sum(B * R, axis=1) / k)
+        groundtruth = np.sum(R, axis=1)
+        groundtruth = np.where(groundtruth < k, groundtruth, k)
+        true_positive = np.sum(B * R, axis=1)
+
+        divider = np.where(groundtruth == 0, 1, groundtruth)
+        return np.sum(true_positive / divider) / np.count_nonzero(groundtruth)
 
     @staticmethod
     def recall_score(R: np.ndarray, S: np.ndarray, k: int = 30) -> float:
@@ -167,9 +183,13 @@ class Metrics:
         Returns:
         float: The recall score.
         """
-        B = DataConversion.convert_score_matrix_to_rank_matrix(S) < k
+        B = DataConverter.convert_score_matrix_to_rank_matrix(S) < k
 
-        return np.mean(np.sum(B * R, axis=1) / np.sum(R, axis=1))
+        groundtruth = np.sum(R, axis=1)
+        true_positive = np.sum(B * R, axis=1)
+
+        divider = np.where(groundtruth == 0, 1, groundtruth)
+        return np.sum(true_positive / divider) / np.count_nonzero(groundtruth)
 
     @staticmethod
     def f1_score(R: np.ndarray, S: np.ndarray, k: int = 30) -> float:
@@ -188,6 +208,8 @@ class Metrics:
         recall = Metrics.recall_score(R, S, k)
 
         return 2 * (precision * recall) / (precision + recall)
+
+    
 
 
 if __name__ == "__main__":

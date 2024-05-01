@@ -7,7 +7,7 @@ from mip import Model, xsum, maximize, BINARY
 
 class ReRankingStrategy(ABC):
     @abstractmethod
-    def optimize(S: np.ndarray, k: int = 30, *args, **kargs) -> Any:
+    def optimize(self, S: np.ndarray, k: int = 30, *args, **kargs) -> Any:
         """
         Optimize the recommend result.
 
@@ -24,7 +24,7 @@ class ReRankingStrategy(ABC):
 
 
 class GroupFairnessReRanking(ReRankingStrategy):
-    def optimize(S: np.ndarray, k: int = 30, *args, **kargs) -> Any:
+    def optimize(self, S: np.ndarray, k: int = 30, *args, **kargs) -> Any:
         """
         Optimize the recommend result with group fairness.
 
@@ -81,7 +81,7 @@ class GroupFairnessReRanking(ReRankingStrategy):
 
 
 class WorstOffNumberOfItemReRanking(ReRankingStrategy):
-    def optimize(S: np.ndarray, k: int = 30, *args, **kargs) -> Any:
+    def optimize(self, S: np.ndarray, k: int = 30, *args, **kargs) -> Any:
         """
         Optimize the recommend result with the worst-off number of items.
 
@@ -99,7 +99,7 @@ class WorstOffNumberOfItemReRanking(ReRankingStrategy):
         n_user = S.shape[0]
         n_item = S.shape[1]
 
-        model = Model()
+        model = Model("knapsack")
 
         W = [[model.add_var() for j in range(n_item)] for i in range(n_user)]
 
@@ -123,7 +123,7 @@ class WorstOffNumberOfItemReRanking(ReRankingStrategy):
 
 
 class WorstOffNumberOfItemAndGroupFairnessReRanking(ReRankingStrategy):
-    def optimize(S: np.ndarray, k: int = 30, *args, **kargs) -> Any:
+    def optimize(self, S: np.ndarray, k: int = 30, *args, **kargs) -> Any:
         """
         Optimize the recommend result with the worst-off number of items and group fairness.
 
@@ -186,7 +186,7 @@ class WorstOffNumberOfItemAndGroupFairnessReRanking(ReRankingStrategy):
 
 
 class WorstOfMDGOfItemReRanking(ReRankingStrategy):
-    def optimize(S: np.ndarray, k: int = 30, *args, **kargs) -> Any:
+    def optimize(self, S: np.ndarray, k: int = 30, *args, **kargs) -> Any:
         """
         Optimize the recommend result with the worst-off mean discounted gain (MDG) of items.
 
@@ -252,8 +252,9 @@ class ReRanking:
 
     def optimize(self, S: np.ndarray, k: int = 30, *args, **kargs) -> np.ndarray:
         W = self.strategy.optimize(S, k, *args, **kargs)
+        return W
 
-    def apply_reranking_matrix(S: np.ndarray, W: np.ndarray) -> np.ndarray:
+    def apply_reranking_matrix(self, S: np.ndarray, W: np.ndarray) -> np.ndarray:
         """
         Apply the reranking matrix to the score matrix.
 
@@ -264,5 +265,5 @@ class ReRanking:
         Returns:
         np.ndarray: The reranked score matrix of shape (n_users, n_items).
         """
-        B = [W[i][j].x for i in range(len(W)) for j in range(len(W[0]))]
+        B = [[W[i][j].x for j in range(S.shape[1])] for i in range(S.shape[0])]
         return (S + 1e-6) * B
