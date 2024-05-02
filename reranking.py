@@ -141,7 +141,8 @@ class WorstOffNumberOfItemAndGroupFairnessReRanking(ReRankingStrategy):
         group_items_cnt: The number of items in each group.
         """
         for key in ["group_items", "group_items_filter_matrix"]:
-            raise ValueError(f"{key} must be provided in kargs.")
+            if key not in kargs:
+                raise ValueError(f"{key} must be provided in kargs.")
         kargs.setdefault("g_epsilon", 0.1)
         kargs.setdefault(kargs["i_epsilon"], 20)
 
