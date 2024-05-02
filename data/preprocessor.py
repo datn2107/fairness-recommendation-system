@@ -68,6 +68,28 @@ def preprocess_ccfcrec_result(S: np.ndarray) -> np.ndarray:
     return S
 
 
+def divide_group(B: np.ndarray, group_p: float) -> np.ndarray:
+    """
+    Divide the score matrix into two groups.
+
+    Parameters:
+    B (np.ndarray): The binary relevance score matrix of shape (n_users, n_items).
+    group_p (float): The percentage of the group. The value should be in the range (0, 1).
+
+    Returns:
+    The divided score matrix.
+    """
+
+    n_items = B.shape[1]
+    items_cnt = np.sum(B, axis=0)
+    items_idx = np.argsort(items_cnt)
+
+    group_size = int(n_items * group_p)
+    group_items = items_idx[:group_size], items_idx[group_size:]
+
+    return group_items
+
+
 if __name__ == '__main__':
     # Test
     S = np.array([[0.1, 0.2, 0.3], [0.5, 0.4, 0.3], [0.3, 0.1, 0.2], [0.4, 0.5, 0.6]])

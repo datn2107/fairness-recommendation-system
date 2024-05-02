@@ -76,7 +76,9 @@ class TopItemMatrixConverterStrategy(DataConverterStrategy):
 
 
 class InteractionDataConverterStrategy(DataConverterStrategy):
-    def convert_to_relevance_matrix(self, data: np.ndarray, k: int = 30, rank_relevance: bool = False, **kwargs) -> np.ndarray:
+    def convert_to_relevance_matrix(
+        self, data: np.ndarray, k: int = 30, rank_relevance: bool = False, **kwargs
+    ) -> np.ndarray:
         """
         Convert the interaction data to relevance matrix based on the input relevance matrix R.
 
@@ -155,6 +157,22 @@ class DataConverter:
         return rank
 
     @staticmethod
+    def convert_score_matrix_to_relevance_matrix(
+        S: np.ndarray, k: int = 30
+    ) -> np.ndarray:
+        """
+        Create the relevance matrix based on the input matrix S.
+
+        Parameters:
+        S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
+
+        Returns:
+        np.ndarray: The relevance score matrix of shape (n_users, n_items).
+        """
+        rank_matrix = DataConverter.convert_score_matrix_to_rank_matrix(S)
+        return DataConverter.convert_rank_relevance_matrix_to_binary(rank_matrix, k)
+
+    @staticmethod
     def convert_score_matrix_to_top_item_matrix(S: np.ndarray) -> np.ndarray:
         """
         Calculate the user rank matrix based on the input matrix S.
@@ -181,7 +199,6 @@ class DataConverter:
         return (S - np.expand_dims(np.min(S, 1), axis=1)) / np.expand_dims(
             np.max(S, 1) - np.min(S, 1), axis=1
         ) + 1e-6
-
 
 
 if __name__ == "__main__":

@@ -120,12 +120,11 @@ class Metrics:
         return np.mean(R / np.log2(matrix_rank + 2), axis=0)
 
     @staticmethod
-    def mdg_score(p: float, R: np.ndarray = None, S: np.ndarray = None, k: int = 30,  items_mdg: np.array = None) -> float:
+    def mdg_score(p: float, S: np.ndarray = None, B: np.ndarray = None, k: int = 30,  items_mdg: np.array = None) -> float:
         """
         Calculate the mean discounted gain (MDG) score.
 
         Parameters:
-        R (np.ndarray): The binary relevance score matrix of shape (n_users, n_items).
         S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
         k (int): The number of items to consider for each user. Default is 30.
         items_mdg (np.array): The MDG score for each item.
@@ -135,9 +134,11 @@ class Metrics:
         float: The MDG score.
         """
         if items_mdg is None:
-            if R is None or S is None:
-                raise ValueError("R, S or items_mdg must be provided.")
-            items_mdg = Metrics.mdg_score_each_item(R, S, k)
+            if S is None:
+                raise ValueError("S or items_mdg must be provided.")
+            if B is None:
+                B = DataConverter.convert_score_matrix_to_relevance_matrix(S, k)
+            items_mdg = Metrics.mdg_score_each_item(B, S, k)
 
         n_item = items_mdg.shape[0]
         k = int(n_item * p)
@@ -209,7 +210,7 @@ class Metrics:
 
         return 2 * (precision * recall) / (precision + recall)
 
-    
+
 
 
 if __name__ == "__main__":

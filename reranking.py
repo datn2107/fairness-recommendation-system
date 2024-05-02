@@ -2,7 +2,7 @@ import numpy as np
 from typing import Any
 from abc import ABC, abstractmethod
 
-from mip import Model, xsum, maximize, BINARY
+from mip import Model, xsum, maximize
 
 
 class ReRankingStrategy(ABC):
@@ -99,7 +99,7 @@ class WorstOffNumberOfItemReRanking(ReRankingStrategy):
         n_user = S.shape[0]
         n_item = S.shape[1]
 
-        model = Model("knapsack")
+        model = Model()
 
         W = [[model.add_var() for j in range(n_item)] for i in range(n_user)]
 
@@ -252,9 +252,10 @@ class ReRanking:
 
     def optimize(self, S: np.ndarray, k: int = 30, *args, **kargs) -> np.ndarray:
         W = self.strategy.optimize(S, k, *args, **kargs)
-        return W
+        W_np = np.array([[W[i][j].x for j in range(S.shape[1])] for i in range(S.shape[0])])
+        return W_np
 
-    def apply_reranking_matrix(self, S: np.ndarray, W: np.ndarray) -> np.ndarray:
+    def apply_reranking_matrix(self, S: np.ndarray, B: np.ndarray) -> np.ndarray:
         """
         Apply the reranking matrix to the score matrix.
 
@@ -265,5 +266,4 @@ class ReRanking:
         Returns:
         np.ndarray: The reranked score matrix of shape (n_users, n_items).
         """
-        B = [[W[i][j].x for j in range(S.shape[1])] for i in range(S.shape[0])]
         return (S + 1e-6) * B
