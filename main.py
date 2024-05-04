@@ -6,7 +6,7 @@ import pandas as pd
 from data.converter import DataConverter, InteractionDataConverterStrategy
 from data.preprocessor import preprocess_clcrec_result, preprocess_ccfcrec_result, divide_group
 from metrics import Metrics
-from reranking import ReRanking, WorstOffNumberOfItemAndGroupFairnessReRanking
+from reranking import ReRanking, WorstOffNumberOfItemAndGroupFairnessReRanking, WorstOffNumberOfItemReRanking
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -14,6 +14,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset-dir", type=str, default="datasets")
     parser.add_argument("--top-k", type=int, default=10)
     parser.add_argument("--epsilon", type=float, default=30)
+    parser.add_argument("--not-reranking", action="store_true")
     args = parser.parse_args()
     top_k = args.top_k
 
@@ -74,20 +75,23 @@ if __name__ == "__main__":
         print("MDG_max_20:", Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.2))
         print("MDG_max_30:", Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.3))
 
-        # group_items = divide_group(B, group_p=0.7)
 
-        # reranking = ReRanking(WorstOffNumberOfItemAndGroupFairnessReRanking())
-        # W = reranking.optimize(S, k=top_k, i_epsilon=args.epsilon, group_items=group_items)
-        # S_reranked = reranking.apply_reranking_matrix(S, W)
+        if not args.not_reranking:
+            # group_items = divide_group(B, group_p=0.7)
 
-        # print("Precision (reranked):", Metrics.precision_score(R, S_reranked, k=top_k))
-        # print("Recall (reranked):", Metrics.recall_score(R, S_reranked, k=top_k))
-        # print("NDCG (reranked):", Metrics.ndcg_score(R, S_reranked, k=top_k))
+            reranking = ReRanking(WorstOffNumberOfItemReRanking())
+            # W = reranking.optimize(S, k=top_k, i_epsilon=args.epsilon, group_items=group_items)
+            W = reranking.optimize(S, k=top_k, epsilon=args.epsilon)
+            S_reranked = reranking.apply_reranking_matrix(S, W)
 
-        # print("MDG_min_10 (reranked):", Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=0.1))
-        # print("MDG_min_20 (reranked):", Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=0.2))
-        # print("MDG_min_30 (reranked):", Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=0.3))
-        # print("MDG_max_10 (reranked):", Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=-0.1))
-        # print("MDG_max_20 (reranked):", Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=-0.2))
-        # print("MDG_max_30 (reranked):", Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=-0.3))
-        # print()
+            print("Precision (reranked):", Metrics.precision_score(R, S_reranked, k=top_k))
+            print("Recall (reranked):", Metrics.recall_score(R, S_reranked, k=top_k))
+            print("NDCG (reranked):", Metrics.ndcg_score(R, S_reranked, k=top_k))
+
+            print("MDG_min_10 (reranked):", Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=0.1))
+            print("MDG_min_20 (reranked):", Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=0.2))
+            print("MDG_min_30 (reranked):", Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=0.3))
+            print("MDG_max_10 (reranked):", Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=-0.1))
+            print("MDG_max_20 (reranked):", Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=-0.2))
+            print("MDG_max_30 (reranked):", Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=-0.3))
+            print()
