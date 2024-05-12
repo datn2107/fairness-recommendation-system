@@ -82,7 +82,8 @@ if __name__ == "__main__":
         entity["mdg_max_20"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.2)
         entity["mdg_max_30"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.3)
 
-        result = result.append(entity, ignore_index=True)
+        df_entity = pd.DataFrame([entity])
+        result = pd.concat([result, df_entity], ignore_index=True)
         print(model_name.upper())
         print(entity)
 
@@ -109,7 +110,8 @@ if __name__ == "__main__":
             entity["mdg_max_20"] = Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=-0.2)
             entity["mdg_max_30"] = Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=-0.3)
 
-            result = result.append(entity, ignore_index=True)
+            df_entity = pd.DataFrame([entity])
+            result = pd.concat([result, df_entity], ignore_index=True)
             print(model_name.upper() + " RERANKED")
             print(entity)
 
