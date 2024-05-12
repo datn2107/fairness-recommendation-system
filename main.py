@@ -15,6 +15,7 @@ if __name__ == "__main__":
     parser.add_argument("--top-k", type=int, default=10)
     parser.add_argument("--epsilon", type=float, default=30)
     parser.add_argument("--not-reranking", action="store_true")
+    parser.add_argument("--result-path", type=str, default="results.csv")
     args = parser.parse_args()
     top_k = args.top_k
 
@@ -51,6 +52,11 @@ if __name__ == "__main__":
 
     assert np.sum(R > 0) == test_cold_interaction.shape[0]
 
+    if os.path.exists(args.result_path):
+        result = pd.read_csv(args.result_path)
+    else:
+        result = pd.DataFrame()
+
     # Load the predicted score matrix
     for model_name in ["ccfcrec", "clcrec"]:
         if model_name == "clcrec":
@@ -62,18 +68,23 @@ if __name__ == "__main__":
         else:
             raise ValueError("Invalid model name.")
 
-        print(model_name.upper())
-        print("Precision:", Metrics.precision_score(R, S, k=top_k))
-        print("Recall:", Metrics.recall_score(R, S, k=top_k))
-        print("NDCG:", Metrics.ndcg_score(R, S, k=top_k))
+        entity = {}
+        entity["model"] = model_name
+        entity["precision"] = Metrics.precision_score(R, S, k=top_k)
+        entity["recall"] = Metrics.recall_score(R, S, k=top_k)
+        entity["ndcg"] = Metrics.ndcg_score(R, S, k=top_k)
 
         B = DataConverter.convert_score_matrix_to_relevance_matrix(S, k=top_k)
-        print("MDG_min_10:", Metrics.mdg_score(S=S, B=B, k=top_k, p=0.1))
-        print("MDG_min_20:", Metrics.mdg_score(S=S, B=B, k=top_k, p=0.2))
-        print("MDG_min_30:", Metrics.mdg_score(S=S, B=B, k=top_k, p=0.3))
-        print("MDG_max_10:", Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.1))
-        print("MDG_max_20:", Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.2))
-        print("MDG_max_30:", Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.3))
+        entity["mdg_min_10"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.1)
+        entity["mdg_min_20"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.2)
+        entity["mdg_min_30"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.3)
+        entity["mdg_max_10"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.1)
+        entity["mdg_max_20"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.2)
+        entity["mdg_max_30"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.3)
+
+        result = result.append(entity, ignore_index=True)
+        print(model_name.upper())
+        print(entity)
 
 
         if not args.not_reranking:
@@ -84,14 +95,22 @@ if __name__ == "__main__":
             W = reranking.optimize(S, k=top_k, epsilon=args.epsilon)
             S_reranked = reranking.apply_reranking_matrix(S, W)
 
-            print("Precision (reranked):", Metrics.precision_score(R, S_reranked, k=top_k))
-            print("Recall (reranked):", Metrics.recall_score(R, S_reranked, k=top_k))
-            print("NDCG (reranked):", Metrics.ndcg_score(R, S_reranked, k=top_k))
+            entity = {}
+            entity['model'] = model_name + "_reranked"
 
-            print("MDG_min_10 (reranked):", Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=0.1))
-            print("MDG_min_20 (reranked):", Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=0.2))
-            print("MDG_min_30 (reranked):", Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=0.3))
-            print("MDG_max_10 (reranked):", Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=-0.1))
-            print("MDG_max_20 (reranked):", Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=-0.2))
-            print("MDG_max_30 (reranked):", Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=-0.3))
-            print()
+            entity["precision"] = Metrics.precision_score(R, S_reranked, k=top_k)
+            entity["recall"] = Metrics.recall_score(R, S_reranked, k=top_k)
+            entity["ndcg"] = Metrics.ndcg_score(R, S_reranked, k=top_k)
+
+            entity["mdg_min_10"] = Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=0.1)
+            entity["mdg_min_20"] = Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=0.2)
+            entity["mdg_min_30"] = Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=0.3)
+            entity["mdg_max_10"] = Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=-0.1)
+            entity["mdg_max_20"] = Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=-0.2)
+            entity["mdg_max_30"] = Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=-0.3)
+
+            result = result.append(entity, ignore_index=True)
+            print(model_name.upper() + " RERANKED")
+            print(entity)
+
+    result.to_csv(args.result_path, index=False)
