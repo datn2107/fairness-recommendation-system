@@ -134,8 +134,8 @@ class Metrics:
         float: The MDG score.
         """
         if items_mdg is None:
-            if S is None:
-                raise ValueError("S or items_mdg must be provided.")
+            if S is None and B is None:
+                raise ValueError("S or B or items_mdg must be provided.")
             if B is None:
                 B = DataConverter.convert_score_matrix_to_relevance_matrix(S, k)
             items_mdg = Metrics.mdg_score_each_item(B, S, k)
@@ -197,7 +197,7 @@ class Metrics:
         """
         Calculate the F1 score.
 
-        Parameters:
+        Parameters:1
         R (np.ndarray): The binary relevance score matrix of shape (n_users, n_items).
         S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
         k (int): The number of items to consider for each user. Default is 30.

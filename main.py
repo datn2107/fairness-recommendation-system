@@ -14,7 +14,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset-dir", type=str, default="datasets")
     parser.add_argument("--top-k", type=int, default=10)
     parser.add_argument("--epsilon", type=float, default=30)
-    parser.add_argument("--not-reranking", action="store_true")
+    parser.add_argument("--reranking", action="store_true")
     parser.add_argument("--result-path", type=str, default="results.csv")
     args = parser.parse_args()
     top_k = args.top_k
@@ -88,7 +88,7 @@ if __name__ == "__main__":
         print(entity)
 
 
-        if not args.not_reranking:
+        if args.reranking:
             # group_items = divide_group(B, group_p=0.7)
 
             reranking = ReRanking(WorstOffNumberOfItemReRanking())
