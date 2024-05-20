@@ -53,9 +53,8 @@ if __name__ == "__main__":
     assert np.sum(R > 0) == test_cold_interaction.shape[0]
 
     if os.path.exists(args.result_path):
-        result = pd.read_csv(args.result_path)
-    else:
-        result = pd.DataFrame()
+        print("Warning: The result file already exists. It will be overwritten.")
+    result = pd.DataFrame()
 
     # Load the predicted score matrix
     for model_name in ["ccfcrec", "clcrec"]:
