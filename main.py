@@ -6,16 +6,18 @@ import pandas as pd
 from data.converter import DataConverter, InteractionDataConverterStrategy
 from data.preprocessor import preprocess_clcrec_result, preprocess_ccfcrec_result, divide_group
 from metrics import Metrics
-from reranking import ReRanking, WorstOffNumberOfItemAndGroupFairnessReRanking, WorstOffNumberOfItemReRanking
+from reranking import ReRanking, ReRankingStrategyFractory
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-name", type=str)
     parser.add_argument("--dataset-dir", type=str, default="datasets")
     parser.add_argument("--top-k", type=int, default=10)
-    parser.add_argument("--epsilon", type=float, default=30)
-    parser.add_argument("--reranking", action="store_true")
     parser.add_argument("--result-path", type=str, default="results.csv")
+    parser.add_argument("--reranking", action="store_true")
+    parser.add_argument("--epsilon", type=float, default=30)
+    parser.add_argument("--group-p", type=float, default=0.7)
+    parser.add_argument("--strategy-name", type=str, default="worst_off_number_of_item_or_tools")
     args = parser.parse_args()
     top_k = args.top_k
 
@@ -57,7 +59,7 @@ if __name__ == "__main__":
     result = pd.DataFrame()
 
     # Load the predicted score matrix
-    for model_name in ["ccfcrec", "clcrec"]:
+    for model_name in ["clcrec", "ccfcrec"]:
         if model_name == "clcrec":
             S = np.load(os.path.join(dataset_dir, f"{model_name}_result_formated.npy"))
             S = preprocess_clcrec_result(S)
@@ -87,11 +89,10 @@ if __name__ == "__main__":
         print(entity)
 
 
-        if args.reranking:
+        if args.reranking and model_name == "clcrec":
             # group_items = divide_group(B, group_p=0.7)
 
-            reranking = ReRanking(WorstOffNumberOfItemReRanking())
-            # W = reranking.optimize(S, k=top_k, i_epsilon=args.epsilon, group_items=group_items)
+            reranking = ReRanking(ReRankingStrategyFractory.create(args.strategy_name))
             W = reranking.optimize(S, k=top_k, epsilon=args.epsilon)
             S_reranked = reranking.apply_reranking_matrix(S, W)
 
