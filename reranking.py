@@ -267,7 +267,16 @@ class WorstOffNumberOfItemReRankingORTools(ReRankingStrategy):
     def optimize(self, S: np.ndarray, k: int = 30, *args, **kargs) -> np.ndarray:
         kargs.setdefault("epsilon", 15)
 
-        solver = pywraplp.Solver.CreateSolver("GLOP")
+        solver = pywraplp.Solver.CreateSolver("SAT")
+
+        solver = pywraplp.Solver.CreateSolver('GLOP')
+        params = pywraplp.MPSolverParameters()
+        params.SetIntegerParam(pywraplp.MPSolverParameters.LP_ALGORITHM, pywraplp.MPSolverParameters.DUAL)
+
+        solver = pywraplp.Solver.CreateSolver('PDLP')
+        termination_criteria_str = "termination_criteria { eps_primal_infeasible: 1e-8 eps_dual_infeasible: 1e-8 }"
+        solver.SetSolverSpecificParametersAsString(termination_criteria_str)
+
         if solver is None:
             return
 
@@ -292,6 +301,7 @@ class WorstOffNumberOfItemReRankingORTools(ReRankingStrategy):
 
         print("Start solving...")
         solver.Solve()
+        solver.Solve(params)
         print("Solved!")
 
         W = np.array([[x[i, j].solution_value() for j in range(n_items)] for i in range(n_users)])
