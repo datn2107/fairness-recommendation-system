@@ -97,7 +97,7 @@ if __name__ == "__main__":
 
         df_entity = pd.DataFrame([entity])
         result = pd.concat([result, df_entity], ignore_index=True)
-        np.save(os.path.join(args.save_dir, f"{model_name}_result_binary.npy"), B)
+        np.save(os.path.join(save_dir, f"{model_name}_result_binary.npy"), B)
         print(model_name.upper())
         print(entity)
 
@@ -112,7 +112,9 @@ if __name__ == "__main__":
 
             df_entity = pd.DataFrame([entity])
             result = pd.concat([result, df_entity], ignore_index=True)
-            np.save(os.path.join(save_dir, f"{model_name}_" + args.reranked_output_path), W)
+            dir = os.path.dirname(args.reranked_output_path)
+            basename = os.path.basename(args.reranked_output_path)
+            np.save(os.path.join(dir, f"{model_name}_{basename}"), W)
             print(model_name.upper() + " RERANKED")
             print(entity)
 
