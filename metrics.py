@@ -229,6 +229,9 @@ class Metrics:
         p (float): The proportion of expected coverage. Default is 0.5.
         percentage (int): The percentage of items to consider. Default is 10.
         k (int): The number of recommened items for each user. Default is 30.
+
+        Returns:
+        float: The U-MMF score.
         """
         n_users, n_items = S.shape[:2]
         percentage /= 100
@@ -248,6 +251,41 @@ class Metrics:
             score = min(score, users_coverage_interval / expected_coverage_user)
 
         return score
+
+    def u_pf(
+        R: np.ndarray, S: np.ndarray, p: float = 0.5, percentage: int = 10, k: int = 30
+    ):
+        """
+        Calculate the user proportion fairness (U-PF) score.
+
+        Parameters:
+        R (np.ndarray): The binary relevance score matrix of shape (n_users, n_items).
+        S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
+        p (float): The proportion of expected coverage. Default is 0.5.
+        percentage (int): The percentage of items to consider. Default is 10.
+        k (int): The number of recommened items for each user. Default is 30.
+
+        Returns:
+        float: The U-PF score.
+        """
+        n_users, n_items = S.shape[:2]
+        percentage /= 100
+
+        max_coverage_user = n_items * k * percentage
+        expected_coverage_user = max_coverage_user * p
+
+        n_items_interval = int(n_items * percentage)
+        items_cnt = np.sum(R, axis=0)
+        items_idx = np.argsort(items_cnt)
+
+        score = []
+        for i in range(0, n_items, n_items_interval):
+            users_coverage_interval = np.sum(
+                np.sum(R[:, items_idx[i : i + n_items_interval]], axis=1) > 0
+            )
+            score.append(users_coverage_interval / expected_coverage_user)
+
+        return np.mean(score)
 
 
 if __name__ == "__main__":

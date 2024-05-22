@@ -24,6 +24,9 @@ def get_metric(R, S, B, top_k):
     entity["u_mmf_30"] = Metrics.u_mmf(R, S, p=0.3, percentage=10, k=top_k)
     entity["u_mmf_50"] = Metrics.u_mmf(R, S, p=0.5, percentage=10, k=top_k)
     entity["u_mmf_70"] = Metrics.u_mmf(R, S, p=0.7, percentage=10, k=top_k)
+    entity["u_pf_30"] = Metrics.u_pf(R, S, p=0.3, k=top_k)
+    entity["u_pf_50"] = Metrics.u_pf(R, S, p=0.5, k=top_k)
+    entity["u_pf_70"] = Metrics.u_pf(R, S, p=0.7, k=top_k)
     return entity
 
 

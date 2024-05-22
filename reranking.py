@@ -1,4 +1,5 @@
 import numpy as np
+from time import time
 from typing import Any
 from abc import ABC, abstractmethod
 
@@ -325,7 +326,9 @@ class ReRanking:
         self.strategy = strategy
 
     def optimize(self, S: np.ndarray, k: int = 30, *args, **kargs) -> np.ndarray:
+        start_time = time()
         W = self.strategy.optimize(S, k, *args, **kargs)
+        print(f"Optimize time: {time() - start_time}")
         return W
 
     def apply_reranking_matrix(self, S: np.ndarray, B: np.ndarray) -> np.ndarray:
