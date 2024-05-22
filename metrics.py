@@ -6,6 +6,7 @@ from data.converter import DataConverter
 
 
 EPSILON = 1e-10
+INF = 1e10
 
 
 class Metrics:
@@ -120,7 +121,13 @@ class Metrics:
         return np.mean(R / np.log2(matrix_rank + 2), axis=0)
 
     @staticmethod
-    def mdg_score(p: float, S: np.ndarray = None, B: np.ndarray = None, k: int = 30,  items_mdg: np.array = None) -> float:
+    def mdg_score(
+        p: float,
+        S: np.ndarray = None,
+        B: np.ndarray = None,
+        k: int = 30,
+        items_mdg: np.array = None,
+    ) -> float:
         """
         Calculate the mean discounted gain (MDG) score.
 
@@ -210,7 +217,37 @@ class Metrics:
 
         return 2 * (precision * recall) / (precision + recall)
 
+    def u_mmf(
+        R: np.ndarray, S: np.ndarray, p: float = 0.5, percentage: int = 10, k: int = 30
+    ):
+        """
+        Calculate the user max-min fairness (U-MMF) score.
 
+        Parameters:
+        R (np.ndarray): The binary relevance score matrix of shape (n_users, n_items).
+        S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
+        p (float): The proportion of expected coverage. Default is 0.5.
+        percentage (int): The percentage of items to consider. Default is 10.
+        k (int): The number of recommened items for each user. Default is 30.
+        """
+        n_users, n_items = S.shape[:2]
+        percentage /= 100
+
+        max_coverage_user = n_items * k * percentage
+        expected_coverage_user = max_coverage_user * p
+
+        n_items_interval = int(n_items * percentage)
+        items_cnt = np.sum(R, axis=0)
+        items_idx = np.argsort(items_cnt)
+
+        score = INF
+        for i in range(0, n_items, n_items_interval):
+            users_coverage_interval = np.sum(
+                np.sum(R[:, items_idx[i : i + n_items_interval]], axis=1) > 0
+            )
+            score = min(score, users_coverage_interval / expected_coverage_user)
+
+        return score
 
 
 if __name__ == "__main__":

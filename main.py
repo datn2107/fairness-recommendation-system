@@ -8,6 +8,25 @@ from data.preprocessor import preprocess_clcrec_result, preprocess_ccfcrec_resul
 from metrics import Metrics
 from reranking import ReRanking, ReRankingStrategyFractory
 
+
+def get_metric(R, S, B, top_k):
+    entity = {}
+    entity["precision"] = Metrics.precision_score(R, S, k=top_k)
+    entity["recall"] = Metrics.recall_score(R, S, k=top_k)
+    entity["ndcg"] = Metrics.ndcg_score(R, S, k=top_k)
+
+    entity["mdg_min_10"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.1)
+    entity["mdg_min_20"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.2)
+    entity["mdg_min_30"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.3)
+    entity["mdg_max_10"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.1)
+    entity["mdg_max_20"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.2)
+    entity["mdg_max_30"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.3)
+    entity["u_mmf_30"] = Metrics.u_mmf(R, S, p=0.3, percentage=10, k=top_k)
+    entity["u_mmf_50"] = Metrics.u_mmf(R, S, p=0.5, percentage=10, k=top_k)
+    entity["u_mmf_70"] = Metrics.u_mmf(R, S, p=0.7, percentage=10, k=top_k)
+    return entity
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-name", type=str)
@@ -70,25 +89,15 @@ if __name__ == "__main__":
         else:
             raise ValueError("Invalid model name.")
 
-        entity = {}
-        entity["model"] = model_name
-        entity["precision"] = Metrics.precision_score(R, S, k=top_k)
-        entity["recall"] = Metrics.recall_score(R, S, k=top_k)
-        entity["ndcg"] = Metrics.ndcg_score(R, S, k=top_k)
-
         B = DataConverter.convert_score_matrix_to_relevance_matrix(S, k=top_k)
-        entity["mdg_min_10"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.1)
-        entity["mdg_min_20"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.2)
-        entity["mdg_min_30"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.3)
-        entity["mdg_max_10"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.1)
-        entity["mdg_max_20"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.2)
-        entity["mdg_max_30"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.3)
+
+        entity = get_metric(R, S, B, top_k)
 
         df_entity = pd.DataFrame([entity])
         result = pd.concat([result, df_entity], ignore_index=True)
+        np.save(os.path.join(dataset_dir, f"{model_name}_result_binary.npy"), B)
         print(model_name.upper())
         print(entity)
-
 
         if args.reranking and model_name == "clcrec":
             # group_items = divide_group(B, group_p=0.7)
@@ -97,22 +106,11 @@ if __name__ == "__main__":
             W = reranking.optimize(S, k=top_k, epsilon=args.epsilon)
             S_reranked = reranking.apply_reranking_matrix(S, W)
 
-            entity = {}
-            entity['model'] = model_name + "_reranked"
-
-            entity["precision"] = Metrics.precision_score(R, S_reranked, k=top_k)
-            entity["recall"] = Metrics.recall_score(R, S_reranked, k=top_k)
-            entity["ndcg"] = Metrics.ndcg_score(R, S_reranked, k=top_k)
-
-            entity["mdg_min_10"] = Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=0.1)
-            entity["mdg_min_20"] = Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=0.2)
-            entity["mdg_min_30"] = Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=0.3)
-            entity["mdg_max_10"] = Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=-0.1)
-            entity["mdg_max_20"] = Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=-0.2)
-            entity["mdg_max_30"] = Metrics.mdg_score(S=S_reranked, B=W, k=top_k, p=-0.3)
+            entity = get_metric(R, S_reranked, W, top_k)
 
             df_entity = pd.DataFrame([entity])
             result = pd.concat([result, df_entity], ignore_index=True)
+            np.save(os.path.join(dataset_dir, f"{model_name}_result_reranked_binary.npy"), Ư)
             print(model_name.upper() + " RERANKED")
             print(entity)
 

@@ -110,7 +110,7 @@ class WorstOffNumberOfItemReRankingMIP(ReRankingStrategy):
             epsilon (int): The minimum number of recommended times for each item. Default is 15.
 
         Returns:
-        W: The binary matrix of shape (n_users, n_items). The value of W[i][j].x is 1 if the item j is recommended to user i.
+        W: The binary matrix of shape (n_users, n_items).
         """
         kargs.setdefault("epsilon", 15)
 
@@ -265,6 +265,20 @@ class WorstOfMDGOfItemReRankingMIP(ReRankingStrategy):
 
 class WorstOffNumberOfItemReRankingORTools(ReRankingStrategy):
     def optimize(self, S: np.ndarray, k: int = 30, *args, **kargs) -> np.ndarray:
+        """
+        Optimize the recommend result with the worst-off number of items using OR-Tools.
+
+        Parameters:
+        S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
+        k (int): The number of items to consider for each user. Default is 30.
+        kargs:
+            epsilon (int): The minimum number of recommended times for each item. Default is 15.
+            strategy_type (str): The strategy type of the solver. Default is "PDLP".
+
+        Returns:
+        W: The binary matrix of shape (n_users, n_items).
+        """
+        kargs.setdefault("strategy_type", "PDLP")
         kargs.setdefault("epsilon", 15)
 
         solver = pywraplp.Solver.CreateSolver(kargs["strategy_type"])
@@ -295,9 +309,9 @@ class WorstOffNumberOfItemReRankingORTools(ReRankingStrategy):
                 objective.SetCoefficient(x[i, j], int(S[i, j]))
         objective.SetMaximization()
 
-        print("Start solving...")
+        # print("Start solving...")
         solver.Solve()
-        print("Solved!")
+        # print("Solved!")
 
         W = np.array([[x[i, j].solution_value() for j in range(n_items)] for i in range(n_users)])
         return W
