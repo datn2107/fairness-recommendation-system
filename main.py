@@ -18,6 +18,7 @@ if __name__ == "__main__":
     parser.add_argument("--epsilon", type=float, default=30)
     parser.add_argument("--group-p", type=float, default=0.7)
     parser.add_argument("--strategy-name", type=str, default="worst_off_number_of_item_or_tools")
+    parser.add_argument("--strategy-type", type=str, default="SAT")
     args = parser.parse_args()
     top_k = args.top_k
 
@@ -92,7 +93,7 @@ if __name__ == "__main__":
         if args.reranking and model_name == "clcrec":
             # group_items = divide_group(B, group_p=0.7)
 
-            reranking = ReRanking(ReRankingStrategyFractory.create(args.strategy_name))
+            reranking = ReRanking(ReRankingStrategyFractory.create(args.strategy_name)(strategy_type=args.strategy_type))
             W = reranking.optimize(S, k=top_k, epsilon=args.epsilon)
             S_reranked = reranking.apply_reranking_matrix(S, W)
 
