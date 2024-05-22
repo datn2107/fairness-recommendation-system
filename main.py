@@ -33,6 +33,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset-dir", type=str, default="datasets")
     parser.add_argument("--top-k", type=int, default=10)
     parser.add_argument("--result-path", type=str, default="results.csv")
+    parser.add_argument("--reranked_output_path", type=str, default="reranked_result_binary.npy")
     parser.add_argument("--reranking", action="store_true")
     parser.add_argument("--epsilon", type=float, default=30)
     parser.add_argument("--group-p", type=float, default=0.7)
@@ -41,6 +42,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     top_k = args.top_k
 
+    save_dir = os.path.dirname(args.result_path)
     dataset_dir = os.path.join(args.dataset_dir, args.dataset_name)
     data_converter = DataConverter(InteractionDataConverterStrategy())
 
@@ -95,7 +97,7 @@ if __name__ == "__main__":
 
         df_entity = pd.DataFrame([entity])
         result = pd.concat([result, df_entity], ignore_index=True)
-        np.save(os.path.join(dataset_dir, f"{model_name}_result_binary.npy"), B)
+        np.save(os.path.join(args.save_dir, f"{model_name}_result_binary.npy"), B)
         print(model_name.upper())
         print(entity)
 
@@ -110,7 +112,7 @@ if __name__ == "__main__":
 
             df_entity = pd.DataFrame([entity])
             result = pd.concat([result, df_entity], ignore_index=True)
-            np.save(os.path.join(dataset_dir, f"{model_name}_result_reranked_binary.npy"), Ư)
+            np.save(os.path.join(save_dir, f"{model_name}_" + args.reranked_output_path), W)
             print(model_name.upper() + " RERANKED")
             print(entity)
 
