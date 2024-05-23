@@ -2,7 +2,7 @@ import os
 import argparse
 import numpy as np
 
-from main import get_metric
+from metrics import get_metric
 from data.converter import DataConverter, InteractionDataConverterStrategy
 
 if __name__ == "__main__":
@@ -26,4 +26,3 @@ if __name__ == "__main__":
     B = DataConverter.convert_score_matrix_to_rank_matrix(S)
 
     print(get_metric(R, B, B, args.top_k))
-    

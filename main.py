@@ -5,29 +5,8 @@ import pandas as pd
 
 from data.converter import DataConverter, InteractionDataConverterStrategy
 from data.preprocessor import preprocess_clcrec_result, preprocess_ccfcrec_result, divide_group
-from metrics import Metrics
+from metrics import get_metric
 from reranking import ReRanking, ReRankingStrategyFractory
-
-
-def get_metric(R, S, B, top_k):
-    entity = {}
-    entity["precision"] = Metrics.precision_score(R, S, k=top_k)
-    entity["recall"] = Metrics.recall_score(R, S, k=top_k)
-    entity["ndcg"] = Metrics.ndcg_score(R, S, k=top_k)
-
-    entity["mdg_min_10"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.1)
-    entity["mdg_min_20"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.2)
-    entity["mdg_min_30"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.3)
-    entity["mdg_max_10"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.1)
-    entity["mdg_max_20"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.2)
-    entity["mdg_max_30"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.3)
-    entity["u_mmf_30"] = Metrics.u_mmf(R, S, p=0.3, percentage=10, k=top_k)
-    entity["u_mmf_50"] = Metrics.u_mmf(R, S, p=0.5, percentage=10, k=top_k)
-    entity["u_mmf_70"] = Metrics.u_mmf(R, S, p=0.7, percentage=10, k=top_k)
-    entity["u_pf_30"] = Metrics.u_pf(R, S, p=0.3, k=top_k)
-    entity["u_pf_50"] = Metrics.u_pf(R, S, p=0.5, k=top_k)
-    entity["u_pf_70"] = Metrics.u_pf(R, S, p=0.7, k=top_k)
-    return entity
 
 
 if __name__ == "__main__":

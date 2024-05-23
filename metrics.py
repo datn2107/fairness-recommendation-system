@@ -218,7 +218,7 @@ class Metrics:
         return 2 * (precision * recall) / (precision + recall)
 
     def u_mmf(
-        R: np.ndarray, S: np.ndarray, p: float = 0.5, percentage: int = 10, k: int = 30
+        R: np.ndarray, S: np.ndarray, p_u_coverage: float = 0.5, p_i_consider: float = 0.1, k: int = 30
     ):
         """
         Calculate the user max-min fairness (U-MMF) score.
@@ -226,20 +226,19 @@ class Metrics:
         Parameters:
         R (np.ndarray): The binary relevance score matrix of shape (n_users, n_items).
         S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
-        p (float): The proportion of expected coverage. Default is 0.5.
-        percentage (int): The percentage of items to consider. Default is 10.
+        p_u_coverage (float): The proportion of expected coverage. Default is 0.5.
+        p_i_consider (float): The percentage of items to consider. Default is 0.1.
         k (int): The number of recommened items for each user. Default is 30.
 
         Returns:
         float: The U-MMF score.
         """
         n_users, n_items = S.shape[:2]
-        percentage /= 100
 
-        max_coverage_user = n_items * k * percentage
-        expected_coverage_user = max_coverage_user * p
+        max_coverage_user = n_items * k * p_i_consider
+        expected_coverage_user = max_coverage_user * p_u_coverage
 
-        n_items_interval = int(n_items * percentage)
+        n_items_interval = int(n_items * p_i_consider)
         items_cnt = np.sum(R, axis=0)
         items_idx = np.argsort(items_cnt)
 
@@ -253,7 +252,7 @@ class Metrics:
         return score
 
     def u_pf(
-        R: np.ndarray, S: np.ndarray, p: float = 0.5, percentage: int = 10, k: int = 30
+        R: np.ndarray, S: np.ndarray, p_u_coverage: float = 0.5, p_i_consider: float = 0.1, k: int = 30
     ):
         """
         Calculate the user proportion fairness (U-PF) score.
@@ -261,20 +260,19 @@ class Metrics:
         Parameters:
         R (np.ndarray): The binary relevance score matrix of shape (n_users, n_items).
         S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
-        p (float): The proportion of expected coverage. Default is 0.5.
-        percentage (int): The percentage of items to consider. Default is 10.
+        p_u_coverage (float): The proportion of expected coverage. Default is 0.5.
+        p_i_consider (int): The percentage of items to consider. Default is 10.
         k (int): The number of recommened items for each user. Default is 30.
 
         Returns:
         float: The U-PF score.
         """
         n_users, n_items = S.shape[:2]
-        percentage /= 100
 
-        max_coverage_user = n_items * k * percentage
-        expected_coverage_user = max_coverage_user * p
+        max_coverage_user = n_items * k * p_i_consider
+        expected_coverage_user = max_coverage_user * p_u_coverage
 
-        n_items_interval = int(n_items * percentage)
+        n_items_interval = int(n_items * p_i_consider)
         items_cnt = np.sum(R, axis=0)
         items_idx = np.argsort(items_cnt)
 
@@ -286,6 +284,27 @@ class Metrics:
             score.append(users_coverage_interval / expected_coverage_user)
 
         return np.mean(score)
+
+
+def get_metric(R, S, B, top_k):
+    entity = {}
+    entity["precision"] = Metrics.precision_score(R, S, k=top_k)
+    entity["recall"] = Metrics.recall_score(R, S, k=top_k)
+    entity["ndcg"] = Metrics.ndcg_score(R, S, k=top_k)
+
+    entity["mdg_min_10"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.1)
+    entity["mdg_min_20"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.2)
+    entity["mdg_min_30"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.3)
+    entity["mdg_max_10"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.1)
+    entity["mdg_max_20"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.2)
+    entity["mdg_max_30"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.3)
+    entity["u_mmf_5"] = Metrics.u_mmf(B, p_u_coverage=1, p_i_consider=0.05, k=top_k)
+    entity["u_mmf_10"] = Metrics.u_mmf(B, p_u_coverage=1, p_i_consider=0.1, k=top_k)
+    entity["u_mmf_15"] = Metrics.u_mmf(B, p_u_coverage=1, p_i_consider=0.15, k=top_k)
+    entity["u_pf_5"] = Metrics.u_pf(B, p_u_coverage=1, p_i_consider=0.05, k=top_k)
+    entity["u_pf_10"] = Metrics.u_pf(B, p_u_coverage=1, p_i_consider=0.1, k=top_k)
+    entity["u_pf_15"] = Metrics.u_pf(B, p_u_coverage=1, p_i_consider=0.15, k=top_k)
+    return entity
 
 
 if __name__ == "__main__":
