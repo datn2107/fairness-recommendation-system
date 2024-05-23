@@ -302,6 +302,7 @@ def get_metric(R, S, B, top_k):
     entity["u_pf_5"] = Metrics.u_pf(B, p_u_coverage=1, p_i_consider=0.05, k=top_k)
     entity["u_pf_10"] = Metrics.u_pf(B, p_u_coverage=1, p_i_consider=0.1, k=top_k)
     entity["u_pf_15"] = Metrics.u_pf(B, p_u_coverage=1, p_i_consider=0.15, k=top_k)
+    entity["time"] = -1
     return entity
 
 

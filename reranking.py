@@ -328,8 +328,9 @@ class ReRanking:
     def optimize(self, S: np.ndarray, k: int = 30, *args, **kargs) -> np.ndarray:
         start_time = time()
         W = self.strategy.optimize(S, k, *args, **kargs)
-        print(f"Optimize time: {time() - start_time}")
-        return W
+        total_time = time() - start_time
+        print(f"Optimize time: {total_time}")
+        return W, total_time
 
     def apply_reranking_matrix(self, S: np.ndarray, B: np.ndarray) -> np.ndarray:
         """

@@ -85,12 +85,13 @@ if __name__ == "__main__":
 
         if args.reranking:
             reranking = ReRanking(ReRankingStrategyFractory.create(args.strategy_name))
-            W = reranking.optimize(S, k=top_k, epsilon=args.epsilon, strategy_type=args.strategy_type)
+            W, time = reranking.optimize(S, k=top_k, epsilon=args.epsilon, strategy_type=args.strategy_type)
             S_reranked = reranking.apply_reranking_matrix(S, W)
 
             entity = get_metric(R, S_reranked, W, top_k)
 
             df_entity = pd.DataFrame([entity])
+            df_entity["time"] = time
             result = pd.concat([result, df_entity], ignore_index=True)
             dir = os.path.dirname(args.reranked_output_path)
             basename = os.path.basename(args.reranked_output_path)
