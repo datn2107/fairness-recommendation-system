@@ -83,9 +83,7 @@ if __name__ == "__main__":
         print(model_name.upper())
         print(entity)
 
-        if args.reranking and model_name == "clcrec":
-            # group_items = divide_group(B, group_p=0.7)
-
+        if args.reranking:
             reranking = ReRanking(ReRankingStrategyFractory.create(args.strategy_name))
             W = reranking.optimize(S, k=top_k, epsilon=args.epsilon, strategy_type=args.strategy_type)
             S_reranked = reranking.apply_reranking_matrix(S, W)
