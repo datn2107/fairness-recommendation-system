@@ -89,9 +89,9 @@ if __name__ == "__main__":
             S_reranked = reranking.apply_reranking_matrix(S, W)
 
             entity = get_metric(R, S_reranked, W, top_k)
+            entity["time"] = time
 
             df_entity = pd.DataFrame([entity])
-            df_entity["time"] = time
             result = pd.concat([result, df_entity], ignore_index=True)
             dir = os.path.dirname(args.reranked_output_path)
             basename = os.path.basename(args.reranked_output_path)
