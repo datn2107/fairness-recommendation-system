@@ -218,14 +218,13 @@ class Metrics:
         return 2 * (precision * recall) / (precision + recall)
 
     def u_mmf(
-        R: np.ndarray, S: np.ndarray, p_u_coverage: float = 0.5, p_i_consider: float = 0.1, k: int = 30
+        R: np.ndarray, p_u_coverage: float = 0.5, p_i_consider: float = 0.1, k: int = 30
     ):
         """
         Calculate the user max-min fairness (U-MMF) score.
 
         Parameters:
         R (np.ndarray): The binary relevance score matrix of shape (n_users, n_items).
-        S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
         p_u_coverage (float): The proportion of expected coverage. Default is 0.5.
         p_i_consider (float): The percentage of items to consider. Default is 0.1.
         k (int): The number of recommened items for each user. Default is 30.
@@ -233,7 +232,7 @@ class Metrics:
         Returns:
         float: The U-MMF score.
         """
-        n_users, n_items = S.shape[:2]
+        n_users, n_items = R.shape[:2]
 
         max_coverage_user = n_items * k * p_i_consider
         expected_coverage_user = max_coverage_user * p_u_coverage
@@ -252,22 +251,21 @@ class Metrics:
         return score
 
     def u_pf(
-        R: np.ndarray, S: np.ndarray, p_u_coverage: float = 0.5, p_i_consider: float = 0.1, k: int = 30
+        R: np.ndarray, p_u_coverage: float = 0.5, p_i_consider: float = 0.1, k: int = 30
     ):
         """
         Calculate the user proportion fairness (U-PF) score.
 
         Parameters:
         R (np.ndarray): The binary relevance score matrix of shape (n_users, n_items).
-        S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
         p_u_coverage (float): The proportion of expected coverage. Default is 0.5.
-        p_i_consider (int): The percentage of items to consider. Default is 10.
+        p_i_consider (float): The percentage of items to consider. Default is 0.1.
         k (int): The number of recommened items for each user. Default is 30.
 
         Returns:
         float: The U-PF score.
         """
-        n_users, n_items = S.shape[:2]
+        n_users, n_items = R.shape[:2]
 
         max_coverage_user = n_items * k * p_i_consider
         expected_coverage_user = max_coverage_user * p_u_coverage
