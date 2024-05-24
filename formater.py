@@ -17,12 +17,18 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     dataset_dir = os.path.join(args.dataset_dir, args.dataset_name)
+
     test_cold_interaction = np.load(os.path.join(dataset_dir, "test_cold_interactions.npy"), allow_pickle=True)
+    test_cold_interaction_provider = np.load(os.path.join(dataset_dir, "test_cold_interactions_provider.npy"), allow_pickle=True)
     cold_items = list(np.load(os.path.join(dataset_dir, "test_cold_items.npy"), allow_pickle=True).item())
+
 
     items_id = map_item_id(test_cold_interaction, cold_items)
     cold_interactions_formated = np.array([[data[0], items_id[data[1]]] for data in test_cold_interaction])
+    cold_interactions_provider_formated = np.array([[data[0], items_id[data[1]], data[2], data[3]] for data in test_cold_interaction_provider])
+
     np.save(os.path.join(dataset_dir, "test_cold_interactions_formated.npy"), cold_interactions_formated)
+    np.save(os.path.join(dataset_dir, "test_cold_interactions_provider_formated.npy"), cold_interactions_provider_formated)
 
     clcrec_result = np.load(os.path.join(dataset_dir, "clcrec_result.npy"))
     if clcrec_result.shape[1] != len(cold_items):
