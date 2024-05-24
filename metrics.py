@@ -187,7 +187,7 @@ class Metrics:
         return np.sum(true_positive / divider) / np.count_nonzero(groundtruth)
 
     @staticmethod
-    def recall_score(R: np.ndarray, S: np.ndarray, k: int = 30) -> float:
+    def recall_score(R: np.ndarray, S: np.ndarray = None, B: np.ndarray = None, k: int = 30) -> float:
         """
         Calculate the recall score.
 
