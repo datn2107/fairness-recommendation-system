@@ -135,7 +135,7 @@ class DataConverter:
         Returns:
         np.ndarray: The binary relevance score matrix of shape (n_users, n_items).
         """
-        return data <= k
+        return data < k
 
     @staticmethod
     def convert_score_matrix_to_rank_matrix(S: np.ndarray) -> np.ndarray:
