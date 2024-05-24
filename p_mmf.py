@@ -1,4 +1,5 @@
 import os
+import argparse
 import cvxpy as cp
 import numpy as np
 import pandas as pd
@@ -131,8 +132,11 @@ def p_mmf_cpu(
 
 
 if __name__ == "__main__":
-    dataset_dir = "datasets/Video_Games"
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument("--dataset_dir", type=str, required=True)
+    args = argparser.parse_args()
 
+    dataset_dir = args.dataset_dir
     test_cold_interaction = np.load(
         os.path.join(dataset_dir, "test_cold_interactions_formatted.npy")
     )
