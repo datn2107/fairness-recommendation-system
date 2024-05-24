@@ -1,5 +1,5 @@
 import numpy as np
-from typing import List
+from typing import List, Optional
 import sklearn.metrics as metrics
 
 from data.converter import DataConverter
@@ -35,7 +35,7 @@ class Metrics:
         return metrics.dcg_score(R, S, k=k)
 
     @staticmethod
-    def ndcg_score(R: np.ndarray, S: np.ndarray, k: int = 30) -> float:
+    def ndcg_score(R: np.ndarray, S: np.ndarray = None, B: Optional[np.ndarray] = None, k: int = 30) -> float:
         """
         Calculate the normalized discounted cumulative gain (NDCG) score.
 
@@ -47,6 +47,10 @@ class Metrics:
         Returns:
         float: The NDCG score.
         """
+        if B is not None:
+            return metrics.ndcg_score(R, B, k=k)
+        if S is None:
+            raise ValueError("S or B must be provided.")
         return metrics.ndcg_score(R, S, k=k)
 
     @staticmethod
@@ -157,19 +161,23 @@ class Metrics:
         return np.mean(items_mdg[partition_idx])
 
     @staticmethod
-    def precision_score(R: np.ndarray, S: np.ndarray, k: int = 30) -> float:
+    def precision_score(R: np.ndarray, S: np.ndarray = None, B: np.ndarray = None, k: int = 30) -> float:
         """
         Calculate the precision score.
 
         Parameters:
         R (np.ndarray): The binary relevance score matrix of shape (n_users, n_items).
         S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
+        B (np.ndarray): The binary relevance decision matrix of shape (n_users, n_items).
         k (int): The number of items to consider for each user. Default is 30.
 
         Returns:
         float: The precision score.
         """
-        B = DataConverter.convert_score_matrix_to_rank_matrix(S) < k
+        if B is None:
+            if S is None:
+                raise ValueError("S or B must be provided.")
+            B = DataConverter.convert_score_matrix_to_rank_matrix(S) < k
 
         groundtruth = np.sum(R, axis=1)
         groundtruth = np.where(groundtruth < k, groundtruth, k)
@@ -185,13 +193,17 @@ class Metrics:
 
         Parameters:
         R (np.ndarray): The binary relevance score matrix of shape (n_users, n_items).
+        B (np.ndarray): The binary relevance decision matrix of shape (n_users, n_items).
         S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
         k (int): The number of items to consider for each user. Default is 30.
 
         Returns:
         float: The recall score.
         """
-        B = DataConverter.convert_score_matrix_to_rank_matrix(S) < k
+        if B is None:
+            if S is None:
+                raise ValueError("S or B must be provided.")
+            B = DataConverter.convert_score_matrix_to_rank_matrix(S) < k
 
         groundtruth = np.sum(R, axis=1)
         true_positive = np.sum(B * R, axis=1)
@@ -286,9 +298,9 @@ class Metrics:
 
 def get_metric(R, S, B, top_k):
     entity = {}
-    entity["precision"] = Metrics.precision_score(R, S, k=top_k)
-    entity["recall"] = Metrics.recall_score(R, S, k=top_k)
-    entity["ndcg"] = Metrics.ndcg_score(R, S, k=top_k)
+    entity["precision"] = Metrics.precision_score(R, B, k=top_k)
+    entity["recall"] = Metrics.recall_score(R, B, k=top_k)
+    entity["ndcg"] = Metrics.ndcg_score(R, B, k=top_k)
 
     entity["mdg_min_10"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.1)
     entity["mdg_min_20"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.2)
@@ -309,10 +321,12 @@ def get_metric(R, S, B, top_k):
 if __name__ == "__main__":
     R = np.array([[1, 0, 1, 0, 1], [0, 1, 0, 1, 0]])
     S = np.array([[0.1, 0.2, 0.3, 0.4, 0.5], [0.5, 0.4, 0.3, 0.2, 0.1]])
+    B = np.array([[0, 0, 1, 1, 1], [1, 1, 1, 0, 0]])
 
     print("Test Metrics Strategy Pattern Design.")
     print(Metrics.dcg_score(R, S))
-    print(Metrics.ndcg_score(R, S))
+    print(Metrics.ndcg_score(R, S, k=3))
+    print(Metrics.ndcg_score(R, S, k=3))
 
     print(Metrics.map_score(R, S))
     print(Metrics.lrap_score(R, S))

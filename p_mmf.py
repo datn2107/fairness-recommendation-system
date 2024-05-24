@@ -1,13 +1,14 @@
 import os
 import argparse
+import torch
 import cvxpy as cp
 import numpy as np
 import pandas as pd
 from tqdm import trange
 
-
 from data.preprocessor import preprocess_clcrec_result
 from data.converter import DataConverter, InteractionDataConverterStrategy
+from metrics import get_metric
 
 
 def relabel_provider(interactions, preference_scores=None, p=0.05):
@@ -124,10 +125,6 @@ def p_mmf_cpu(
             mu_t = compute_next_dual(eta, rho, mu_t, gradient, lambd)
             sum_dual += mu_t
 
-        if prev_result_x is not None:
-            print(np.array_equal(result_x, prev_result_x))
-        prev_result_x = result_x.copy()
-
     return result_x
 
 
@@ -155,4 +152,8 @@ if __name__ == "__main__":
 
     clcrec_result = preprocess_clcrec_result(clcrec_result)
     test_cold_interaction = relabel_provider(test_cold_interaction, clcrec_result)
-    p_mmf_cpu(clcrec_result, test_cold_interaction, 30, 0.1, 0.1, 1e-3)
+    result = p_mmf_cpu(clcrec_result, test_cold_interaction, 30, 0.1, 0.1, 1e-3)
+    print(result.shape)
+
+    metric = get_metric(R, result, result, 30)
+    print(metric)
