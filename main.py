@@ -22,8 +22,8 @@ if __name__ == "__main__":
     parser.add_argument("--strategy-name", type=str, default="worst_off_number_of_item_or_tools")
     parser.add_argument("--strategy-type", type=str, default="SAT")
     args = parser.parse_args()
-    top_k = args.top_k
 
+    top_k = args.top_k
     save_dir = os.path.dirname(args.result_path)
     dataset_dir = os.path.join(args.dataset_dir, args.dataset_name)
     data_converter = DataConverter(InteractionDataConverterStrategy())
@@ -49,6 +49,7 @@ if __name__ == "__main__":
     ).item()
     tmp_result = np.load(os.path.join(dataset_dir, "ccfcrec_result.npy"))
 
+    # Convert the interaction data to relevance matrix
     R = data_converter.convert_to_relevance_matrix(
         test_cold_interaction,
         rank_relevance=False,
@@ -62,8 +63,9 @@ if __name__ == "__main__":
         print("Warning: The result file already exists. It will be overwritten.")
     result = pd.DataFrame()
 
-    # Load the predicted score matrix
+    # Compute the predicted score matrix
     for model_name in ["clcrec", "ccfcrec"]:
+        # Load the predicted score matrix
         if model_name == "clcrec":
             S = np.load(os.path.join(dataset_dir, f"{model_name}_result_formated.npy"))
             S = preprocess_clcrec_result(S)
@@ -73,8 +75,8 @@ if __name__ == "__main__":
         else:
             raise ValueError("Invalid model name.")
 
+        # Before applying reranking
         B = DataConverter.convert_score_matrix_to_relevance_matrix(S, k=top_k)
-
         entity = get_metric(R, S, B, top_k)
 
         df_entity = pd.DataFrame([entity])
@@ -83,6 +85,7 @@ if __name__ == "__main__":
         print(model_name.upper())
         print(entity)
 
+        # Apply reranking
         if args.reranking:
             reranking = ReRanking(ReRankingStrategyFractory.create(args.strategy_name))
             W, time = reranking.optimize(S, k=top_k, epsilon=args.epsilon, strategy_type=args.strategy_type)

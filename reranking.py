@@ -318,6 +318,11 @@ class WorstOffNumberOfItemReRankingORTools(ReRankingStrategy):
         return W
 
 
+class UMMFReRanking(ReRankingStrategy):
+    def optimize(self, S: np.ndarray, k: int = 30, *args, **kargs) -> np.ndarray:
+        pass
+
+
 class ReRanking:
     def __init__(self, strategy: ReRankingStrategy = None):
         self.strategy = strategy

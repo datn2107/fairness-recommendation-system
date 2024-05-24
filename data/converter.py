@@ -95,7 +95,7 @@ class InteractionDataConverterStrategy(DataConverterStrategy):
         """
         n_users, n_items = int(kwargs["n_users"]), int(kwargs["n_items"])
         R = np.zeros((n_users, n_items), dtype=np.int32)
-        for user, item in data:
+        for user, item in data[:, :2]:
             R[user, item] = 1
 
         return R

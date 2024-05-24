@@ -5,3 +5,4 @@ matplotlib
 mip
 scikit-learn
 ortools
+cvxpy
