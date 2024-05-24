@@ -2,6 +2,7 @@ import os
 import cvxpy as cp
 import numpy as np
 import pandas as pd
+from tqdm import trange
 
 
 from data.preprocessor import preprocess_clcrec_result
@@ -21,6 +22,7 @@ def relabel_provider(interactions, preference_scores=None, p=0.05):
 
     interactions[:, 3] = np.unique(interactions[:, 3], return_inverse=True)[1]
     return interactions
+
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
@@ -48,17 +50,21 @@ def compute_next_dual(eta, rho, dual, gradient, lambd):
     return ordered_next_dual[order.argsort()]
 
 
-def p_mmf_cpu(trained_preference_scores, cold_test_interactions, top_k, lambd, alpha, eta):
+def p_mmf_cpu(
+    trained_preference_scores, cold_test_interactions, top_k, lambd, alpha, eta
+):
     n_users, n_items = trained_preference_scores.shape[:2]
     T = n_users
 
     # create dataframe contain 4 columns: uid, iid, time, provider from cold_test_interactions
-    datas = pd.DataFrame({
-        'uid': cold_test_interactions[:, 0],
-        'iid': cold_test_interactions[:, 1],
-        'time': cold_test_interactions[:, 2],
-        'provider': cold_test_interactions[:, 3]
-    })
+    datas = pd.DataFrame(
+        {
+            "uid": cold_test_interactions[:, 0],
+            "iid": cold_test_interactions[:, 1],
+            "time": cold_test_interactions[:, 2],
+            "provider": cold_test_interactions[:, 3],
+        }
+    )
     uid_field, iid_field, time_field, provider_field = datas.columns
 
     n_providers = len(datas[provider_field].unique())
@@ -81,33 +87,23 @@ def p_mmf_cpu(trained_preference_scores, cold_test_interactions, top_k, lambd, a
     for i in range(n_items):
         iid2pid.append(item2provider[i])
         A[i, item2provider[i]] = 1
-    W_batch = []
-    RRQ_batch, MMF_batch = [], []
 
     K = top_k
 
     print(n_users, n_items)
-    for b in range(batch_size):
+    prev_result_x = None
+    for b in trange(batch_size):
         min_index = b * T
         max_index = (b + 1) * T
         batch_UI = UI_matrix[min_index:max_index, :]
-        nor_dcg = []
-        UI_matrix_sort = np.sort(batch_UI, axis=-1)
-        for i in range(T):
-            nor_dcg.append(0)
-            for k in range(K):
-                nor_dcg[i] = nor_dcg[i] + UI_matrix_sort[i, n_items - k - 1] / np.log2(
-                    k + 2
-                )
 
         mu_t = np.zeros(n_providers)
         B_t = T * K * rho
-
+        # print(np.float32(B_t>0))
         sum_dual = 0
         result_x = []
         eta = eta / np.sqrt(T)
         gradient_cusum = np.zeros(n_providers)
-        gradient_list = []
         for t in range(T):
             alpha = alpha
             x_title = batch_UI[t, :] - np.matmul(A, mu_t)
@@ -125,29 +121,13 @@ def p_mmf_cpu(trained_preference_scores, cold_test_interactions, top_k, lambd, a
             gradient = alpha * gradient + (1 - alpha) * gradient_cusum
             gradient_cusum = gradient
             mu_t = compute_next_dual(eta, rho, mu_t, gradient, lambd)
-
             sum_dual += mu_t
 
-        base_model_provider_exposure = np.zeros(n_providers)
-        result = 0
-        for t in range(T):
-            dcg = 0
-            x_recommended = result_x[t]
-            for k in range(K):
-                base_model_provider_exposure[iid2pid[x_recommended[k]]] += 1
-                dcg = dcg + batch_UI[t, x_recommended[k]] / np.log2(k + 2)
-                result = result + batch_UI[t, x_recommended[k]]
+        if prev_result_x is not None:
+            print(np.array_equal(result_x, prev_result_x))
+        prev_result_x = result_x.copy()
 
-        rho_reverse = 1 / (rho * T * K)
-        MMF = np.min(base_model_provider_exposure * rho_reverse)
-        W = result / T + lambd * MMF
-
-        W_batch.append(W)
-        MMF_batch.append(MMF)
-
-    W, RRQ, MMF = np.mean(W_batch), np.mean(RRQ_batch), np.mean(MMF_batch)
-    print("W:%.4f RRQ: %.4f MMF: %.4f " % (W, RRQ, MMF))
-    return W, RRQ, MMF
+    return result_x
 
 
 if __name__ == "__main__":
