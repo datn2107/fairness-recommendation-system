@@ -298,9 +298,9 @@ class Metrics:
 
 def get_metric(R, S, B, top_k):
     entity = {}
-    entity["precision"] = Metrics.precision_score(R, B, k=top_k)
-    entity["recall"] = Metrics.recall_score(R, B, k=top_k)
-    entity["ndcg"] = Metrics.ndcg_score(R, B, k=top_k)
+    entity["precision"] = Metrics.precision_score(R, B=B, k=top_k)
+    entity["recall"] = Metrics.recall_score(R, B=B, k=top_k)
+    entity["ndcg"] = Metrics.ndcg_score(R, B=B, k=top_k)
 
     entity["mdg_min_10"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.1)
     entity["mdg_min_20"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.2)
