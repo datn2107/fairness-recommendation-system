@@ -48,7 +48,7 @@ class Metrics:
         float: The NDCG score.
         """
         if B is not None:
-            return metrics.ndcg_score(R, B, k=k)
+            return metrics.ndcg_score(R, B.astype(np.int32), k=k)
         if S is None:
             raise ValueError("S or B must be provided.")
         return metrics.ndcg_score(R, S, k=k)
