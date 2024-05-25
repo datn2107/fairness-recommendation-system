@@ -8,18 +8,23 @@ from tqdm import trange
 
 from data.preprocessor import preprocess_clcrec_result
 from data.converter import DataConverter, InteractionDataConverterStrategy
-from metrics import get_metric
+from metrics import get_metric, Metrics
+
+
+def get_item_provider_mapper(S: np.ndarray, p=0.05):
+    items_count = np.sum(S, axis=0)
+    items_id_sorted = np.argsort(items_count)
+
+    item_interval = int(len(items_id_sorted) * p)
+    provider_id = np.zeros(len(items_id_sorted))
+    for i, s in enumerate(range(0, len(items_id_sorted), item_interval)):
+        provider_id[items_id_sorted[s : s + item_interval]] = i
+    return provider_id
 
 
 def relabel_provider(interactions, preference_scores=None, p=0.05):
     if preference_scores is not None:
-        items_count = np.sum(preference_scores, axis=0)
-        items_id_sorted = np.argsort(items_count)
-
-        item_interval = int(len(items_id_sorted) * p)
-        provider_id = np.zeros(len(items_id_sorted))
-        for i, s in enumerate(range(0, len(items_id_sorted), item_interval)):
-            provider_id[items_id_sorted[s : s + item_interval]] = i
+        provider_id = get_item_provider_mapper(preference_scores, p)
         interactions[:, 3] = provider_id[interactions[:, 1]]
 
     interactions[:, 3] = np.unique(interactions[:, 3], return_inverse=True)[1]
@@ -30,7 +35,7 @@ def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
 
-def CPU_layer(ordered_tilde_dual, rho, lambd):
+def cpu_layer(ordered_tilde_dual, rho, lambd):
     m = len(rho)
     answer = cp.Variable(m)
     objective = cp.Minimize(
@@ -48,7 +53,7 @@ def compute_next_dual(eta, rho, dual, gradient, lambd):
     tilde_dual = dual - eta * gradient / rho / rho
     order = np.argsort(tilde_dual * rho)
     ordered_tilde_dual = tilde_dual[order]
-    ordered_next_dual = CPU_layer(ordered_tilde_dual, rho[order], lambd)
+    ordered_next_dual = cpu_layer(ordered_tilde_dual, rho[order], lambd)
     return ordered_next_dual[order.argsort()]
 
 
@@ -56,6 +61,7 @@ def p_mmf_cpu(
     trained_preference_scores, cold_test_interactions, R, top_k, lambd, alpha, eta, time_step=256
 ):
     n_users, n_items = trained_preference_scores.shape[:2]
+    item_provider_mapper = get_item_provider_mapper(trained_preference_scores)
     T = time_step
 
     # create dataframe contain 4 columns: uid, iid, time, provider from cold_test_interactions
@@ -162,6 +168,8 @@ def p_mmf_cpu(
     for i, x in enumerate(final_result):
         B[i, x] = 1
 
+    print(Metrics.ndcg_fairness(trained_preference_scores, B, 30))
+    print(Metrics.w_trade_off(trained_preference_scores, B, item_provider_mapper, 30, 0.1))
     metric = get_metric(R, B, B, 30)
     print(metric)
 

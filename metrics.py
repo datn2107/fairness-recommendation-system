@@ -295,6 +295,7 @@ class Metrics:
 
         return np.mean(score)
 
+    @staticmethod
     def ndcg_fairness(S: np.ndarray, B: np.ndarray, k: int = 30):
         """
         Calculate the NDCG fairness score.
@@ -317,8 +318,33 @@ class Metrics:
 
         return ndcg
 
-    # def w_trade_off(S: np.ndarray, B: np.ndarray, k: int = 30):
+    @staticmethod
+    def w_trade_off(S: np.ndarray, B: np.ndarray, item_provider_mapper: dict, k: int = 30, lambd: float = 0.1):
+        """
+        Calculate the W trade-off score.
 
+        Parameters:
+        S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
+        B (np.ndarray): The binary relevance decision matrix of shape (n_users, n_items).
+        item_provider_mapper (dict): The item provider mapper.
+        k (int): The number of items to consider for each user. Default is 30.
+        lambd (float): The trade-off parameter. Default is 0.1.
+
+        Returns:
+        float: The W trade-off score.
+        """
+
+        items_count = np.sum(B, axis=0)
+        n_providers = len(set(item_provider_mapper.values()))
+        providers_count = np.unique(list(item_provider_mapper.values()), return_counts=True)[1]
+
+        rho = (1 + 1 / n_providers) * providers_count / np.sum(providers_count)
+        rho_item = np.array([rho[item_provider_mapper[i]] for i in range(len(items_count))])
+
+        mmf = np.min(items_count / rho_item)
+        score = np.mean(B * S, axis=1)
+
+        return score + lambd * mmf
 
 
 def get_metric(R, S, B, top_k):
