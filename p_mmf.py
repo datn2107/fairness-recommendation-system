@@ -195,5 +195,9 @@ if __name__ == "__main__":
     )
 
     clcrec_result = preprocess_clcrec_result(clcrec_result)
+    B = converter.convert_score_matrix_to_relevance_matrix(clcrec_result, k=30)
+    metric = get_metric(R, B, B, 30)
+    print(metric)
+
     test_cold_interaction = relabel_provider(test_cold_interaction, clcrec_result)
     result = p_mmf_cpu(clcrec_result, test_cold_interaction, R, 30, 0.1, 0.1, 1e-3)
