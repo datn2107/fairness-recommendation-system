@@ -40,15 +40,15 @@ if __name__ == "__main__":
     result = pd.DataFrame()
     for model in ["clcrec", "ccfcrec"]:
         S = load_result(model, dataset_dir)
-        item_provider_mapper = get_item_provider_mapper(S, p=0.05)
+        B = data_converter.convert_score_matrix_to_relevance_matrix(S, k=args.top_k)
         R = data_converter.convert_to_relevance_matrix(
             interactions,
             rank_relevance=False,
             n_users=B.shape[0],
             n_items=B.shape[1],
         )
+        item_provider_mapper = get_item_provider_mapper(S, p=0.05)
 
-        B = np.load(os.path.join(dataset_dir, f"{model}_result_binary.npy"))
         entity = get_metric(R, S, B, args.top_k, item_provider_mapper)
         entity["model"] = model
         result = pd.concat([result, entity])
@@ -61,5 +61,5 @@ if __name__ == "__main__":
             entity["model"] = model + "_" + method
             result = pd.concat([result, entity])
 
-    result.to_csv(os.path.join(dataset_dir, "results.csv"), index=False)
+    result.to_csv(os.path.join(dataset_dir, "final_results.csv"), index=False)
     print(result)
