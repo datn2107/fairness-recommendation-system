@@ -53,7 +53,7 @@ def compute_next_dual(eta, rho, dual, gradient, lambd):
 
 
 def p_mmf_cpu(
-    trained_preference_scores, cold_test_interactions, top_k, lambd, alpha, eta
+    trained_preference_scores, cold_test_interactions, R, top_k, lambd, alpha, eta
 ):
     n_users, n_items = trained_preference_scores.shape[:2]
     T = n_users
@@ -91,21 +91,31 @@ def p_mmf_cpu(
         A[i, item2provider[i]] = 1
 
     K = top_k
+    W_batch = []
+    RRQ_batch, MMF_batch = [], []
 
     print(n_users, n_items)
-    prev_result_x = None
     for b in trange(batch_size):
         min_index = b * T
         max_index = (b + 1) * T
         batch_UI = UI_matrix[min_index:max_index, :]
+        nor_dcg = []
+        UI_matrix_sort = np.sort(batch_UI, axis=-1)
+        for i in range(T):
+            nor_dcg.append(0)
+            for k in range(K):
+                nor_dcg[i] = nor_dcg[i] + UI_matrix_sort[i, n_items - k - 1] / np.log2(
+                    k + 2
+                )
 
         mu_t = np.zeros(n_providers)
         B_t = T * K * rho
-        # print(np.float32(B_t>0))
+        # print(np.float(B_t>0))
         sum_dual = 0
         result_x = []
         eta = eta / np.sqrt(T)
         gradient_cusum = np.zeros(n_providers)
+        gradient_list = []
         for t in range(T):
             alpha = alpha
             x_title = batch_UI[t, :] - np.matmul(A, mu_t)
@@ -122,10 +132,44 @@ def p_mmf_cpu(
 
             gradient = alpha * gradient + (1 - alpha) * gradient_cusum
             gradient_cusum = gradient
-            mu_t = compute_next_dual(eta, rho, mu_t, gradient, lambd)
+            for g in range(1):
+                mu_t = compute_next_dual(eta, rho, mu_t, gradient, lambd)
+            # print(mu_t)
+            # exit(0)
             sum_dual += mu_t
+        ndcg = 0
 
-    return result_x
+        base_model_provider_exposure = np.zeros(n_providers)
+        result = 0
+        for t in range(T):
+            dcg = 0
+            x_recommended = result_x[t]
+            # x_recommended = np.random.choice(list(range(0,n_items)),size=K,replace=False,p=x_value[t,:]/K)
+            for k in range(K):
+                base_model_provider_exposure[iid2pid[x_recommended[k]]] += 1
+                dcg = dcg + batch_UI[t, x_recommended[k]] / np.log2(k + 2)
+                result = result + batch_UI[t, x_recommended[k]]
+
+            ndcg = ndcg + dcg / nor_dcg[t]
+        ndcg = ndcg / T
+        rho_reverse = 1 / (rho * T * K)
+        MMF = np.min(base_model_provider_exposure * rho_reverse)
+        W = result / T + lambd * MMF
+
+        W_batch.append(W)
+        RRQ_batch.append(ndcg)
+        MMF_batch.append(MMF)
+
+        B = np.zeros((n_users, n_items))
+        for i, x in enumerate(result_x):
+            B[i, x] = 1
+
+        metric = get_metric(R, B, B, 30)
+        print(metric)
+
+    W, RRQ, MMF = np.mean(W_batch), np.mean(RRQ_batch), np.mean(MMF_batch)
+    print("W:%.4f RRQ: %.4f MMF: %.4f " % (W, RRQ, MMF))
+    return W, RRQ, MMF
 
 
 if __name__ == "__main__":
@@ -152,13 +196,4 @@ if __name__ == "__main__":
 
     clcrec_result = preprocess_clcrec_result(clcrec_result)
     test_cold_interaction = relabel_provider(test_cold_interaction, clcrec_result)
-    result = p_mmf_cpu(clcrec_result, test_cold_interaction, 30, 0.1, 0.1, 1e-3)
-
-    B = np.zeros_like(clcrec_result)
-    for i, x in enumerate(result):
-        B[i, x] = 1
-
-    print(len(result))
-
-    metric = get_metric(R, B, B, 30)
-    print(metric)
+    result = p_mmf_cpu(clcrec_result, test_cold_interaction, R, 30, 0.1, 0.1, 1e-3)
