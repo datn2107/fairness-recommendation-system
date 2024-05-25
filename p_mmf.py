@@ -53,10 +53,10 @@ def compute_next_dual(eta, rho, dual, gradient, lambd):
 
 
 def p_mmf_cpu(
-    trained_preference_scores, cold_test_interactions, R, top_k, lambd, alpha, eta
+    trained_preference_scores, cold_test_interactions, R, top_k, lambd, alpha, eta, time_step=256
 ):
     n_users, n_items = trained_preference_scores.shape[:2]
-    T = n_users
+    T = time_step
 
     # create dataframe contain 4 columns: uid, iid, time, provider from cold_test_interactions
     datas = pd.DataFrame(
@@ -73,10 +73,9 @@ def p_mmf_cpu(
     providerLen = np.array(datas.groupby(provider_field).size().values)
     rho = (1 + 1 / n_providers) * providerLen / np.sum(providerLen)
     datas.sort_values(by=[time_field], ascending=True, inplace=True)
-    batch_size = int(len(datas) // T)
 
-    data_val = np.array(datas[uid_field].values[-batch_size * T :]).astype(np.int32)
-    UI_matrix = trained_preference_scores[data_val]
+    batch_size = n_users // T
+    UI_matrix = trained_preference_scores[np.arange(n_users)]
 
     # normalize user-item perference score to [0,1]
     UI_matrix = sigmoid(UI_matrix)
@@ -94,7 +93,7 @@ def p_mmf_cpu(
     W_batch = []
     RRQ_batch, MMF_batch = [], []
 
-    print(n_users, n_items)
+    final_result = []
     for b in trange(batch_size):
         min_index = b * T
         max_index = (b + 1) * T
@@ -127,6 +126,7 @@ def p_mmf_cpu(
             re_allocation = np.argsort(batch_UI[t, x_allocation])[::-1]
             x_allocation = x_allocation[re_allocation]
             result_x.append(x_allocation)
+            final_result.append(x_allocation)
             B_t = B_t - np.sum(A[x_allocation], axis=0, keepdims=False)
             gradient = -np.mean(A[x_allocation], axis=0, keepdims=False) + B_t / (T * K)
 
@@ -134,8 +134,6 @@ def p_mmf_cpu(
             gradient_cusum = gradient
             for g in range(1):
                 mu_t = compute_next_dual(eta, rho, mu_t, gradient, lambd)
-            # print(mu_t)
-            # exit(0)
             sum_dual += mu_t
         ndcg = 0
 
@@ -160,16 +158,16 @@ def p_mmf_cpu(
         RRQ_batch.append(ndcg)
         MMF_batch.append(MMF)
 
-        B = np.zeros((n_users, n_items))
-        for i, x in enumerate(result_x):
-            B[i, x] = 1
+    B = np.zeros((n_users, n_items))
+    for i, x in enumerate(final_result):
+        B[i, x] = 1
 
-        metric = get_metric(R, B, B, 30)
-        print(metric)
+    metric = get_metric(R, B, B, 30)
+    print(metric)
 
     W, RRQ, MMF = np.mean(W_batch), np.mean(RRQ_batch), np.mean(MMF_batch)
     print("W:%.4f RRQ: %.4f MMF: %.4f " % (W, RRQ, MMF))
-    return W, RRQ, MMF
+    return W, RRQ, MMF, final_result
 
 
 if __name__ == "__main__":

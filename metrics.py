@@ -295,6 +295,31 @@ class Metrics:
 
         return np.mean(score)
 
+    def ndcg_fairness(S: np.ndarray, B: np.ndarray, k: int = 30):
+        """
+        Calculate the NDCG fairness score.
+
+        Parameters:
+        S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
+        B (np.ndarray): The binary relevance decision matrix of shape (n_users, n_items).
+        k (int): The number of items to consider for each user. Default is 30.
+
+        Returns:
+        float: The NDCG fairness score.
+        """
+        S_sort = np.sort(S, axis=1)[:, ::-1]
+        B_sort = np.sort(B * S, axis=1)[:, ::-1]
+
+        logs = np.log2(np.arange(2, k + 2))
+        dcg = np.sum(B_sort[:, :k] / logs, axis=1)
+        idcg = np.sum(S_sort[:, :k] / logs, axis=1)
+        ndcg = np.mean(dcg / idcg)
+
+        return ndcg
+
+    # def w_trade_off(S: np.ndarray, B: np.ndarray, k: int = 30):
+
+
 
 def get_metric(R, S, B, top_k):
     entity = {}
