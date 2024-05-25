@@ -16,7 +16,7 @@ def get_item_provider_mapper(S: np.ndarray, p=0.05):
     items_id_sorted = np.argsort(items_count)
 
     item_interval = int(len(items_id_sorted) * p)
-    provider_id = np.zeros(len(items_id_sorted))
+    provider_id = np.zeros(len(items_id_sorted), dtype=np.int32)
     for i, s in enumerate(range(0, len(items_id_sorted), item_interval)):
         provider_id[items_id_sorted[s : s + item_interval]] = i
     return provider_id
@@ -58,7 +58,14 @@ def compute_next_dual(eta, rho, dual, gradient, lambd):
 
 
 def p_mmf_cpu(
-    trained_preference_scores, cold_test_interactions, R, top_k, lambd, alpha, eta, time_step=256
+    trained_preference_scores,
+    cold_test_interactions,
+    R,
+    top_k,
+    lambd,
+    alpha,
+    eta,
+    time_step=256,
 ):
     n_users, n_items = trained_preference_scores.shape[:2]
     item_provider_mapper = get_item_provider_mapper(trained_preference_scores)
@@ -100,6 +107,7 @@ def p_mmf_cpu(
     RRQ_batch, MMF_batch = [], []
 
     final_result = []
+    ori_eta = eta
     for b in trange(batch_size):
         min_index = b * T
         max_index = (b + 1) * T
@@ -118,11 +126,10 @@ def p_mmf_cpu(
         # print(np.float(B_t>0))
         sum_dual = 0
         result_x = []
-        eta = eta / np.sqrt(T)
+        eta = ori_eta / np.sqrt(T)
         gradient_cusum = np.zeros(n_providers)
         gradient_list = []
         for t in range(T):
-            alpha = alpha
             x_title = batch_UI[t, :] - np.matmul(A, mu_t)
             mask = np.matmul(A, (B_t > 0).astype(np.float32))
 
@@ -168,9 +175,7 @@ def p_mmf_cpu(
     for i, x in enumerate(final_result):
         B[i, x] = 1
 
-    print(Metrics.ndcg_fairness(trained_preference_scores, B, 30))
-    print(Metrics.w_trade_off(trained_preference_scores, B, item_provider_mapper, 30, 0.1))
-    metric = get_metric(R, B, B, 30)
+    metric = get_metric(R, trained_preference_scores, B, 30, item_provider_mapper)
     print(metric)
 
     W, RRQ, MMF = np.mean(W_batch), np.mean(RRQ_batch), np.mean(MMF_batch)
@@ -201,8 +206,9 @@ if __name__ == "__main__":
     )
 
     clcrec_result = preprocess_clcrec_result(clcrec_result)
+    item_provider_mapper = get_item_provider_mapper(clcrec_result)
     B = converter.convert_score_matrix_to_relevance_matrix(clcrec_result, k=30)
-    metric = get_metric(R, B, B, 30)
+    metric = get_metric(R, clcrec_result, B, 30, item_provider_mapper)
     print(metric)
 
     test_cold_interaction = relabel_provider(test_cold_interaction, clcrec_result)

@@ -76,11 +76,13 @@ if __name__ == "__main__":
             raise ValueError("Invalid model name.")
 
         # Before applying reranking
+        item_provider_mapper = divide_group(test_cold_items, args.group_p)
         B = DataConverter.convert_score_matrix_to_relevance_matrix(S, k=top_k)
-        entity = get_metric(R, S, B, top_k)
+        entity = get_metric(R, S, B, top_k, item_provider_mapper)
 
         df_entity = pd.DataFrame([entity])
         result = pd.concat([result, df_entity], ignore_index=True)
+        
         np.save(os.path.join(save_dir, f"{model_name}_result_binary.npy"), B)
         print(model_name.upper())
         print(entity)
@@ -91,14 +93,16 @@ if __name__ == "__main__":
             W, time = reranking.optimize(S, k=top_k, epsilon=args.epsilon, strategy_type=args.strategy_type)
             S_reranked = reranking.apply_reranking_matrix(S, W)
 
-            entity = get_metric(R, S_reranked, W, top_k)
+            entity = get_metric(R, S_reranked, W, top_k, item_provider_mapper)
             entity["time"] = time
 
             df_entity = pd.DataFrame([entity])
             result = pd.concat([result, df_entity], ignore_index=True)
+
             dir = os.path.dirname(args.reranked_output_path)
             basename = os.path.basename(args.reranked_output_path)
             np.save(os.path.join(dir, f"{model_name}_{basename}"), W)
+
             print(model_name.upper() + " RERANKED")
             print(entity)
 

@@ -35,7 +35,9 @@ class Metrics:
         return metrics.dcg_score(R, S, k=k)
 
     @staticmethod
-    def ndcg_score(R: np.ndarray, S: np.ndarray = None, B: Optional[np.ndarray] = None, k: int = 30) -> float:
+    def ndcg_score(
+        R: np.ndarray, S: np.ndarray = None, B: Optional[np.ndarray] = None, k: int = 30
+    ) -> float:
         """
         Calculate the normalized discounted cumulative gain (NDCG) score.
 
@@ -161,7 +163,9 @@ class Metrics:
         return np.mean(items_mdg[partition_idx])
 
     @staticmethod
-    def precision_score(R: np.ndarray, S: np.ndarray = None, B: np.ndarray = None, k: int = 30) -> float:
+    def precision_score(
+        R: np.ndarray, S: np.ndarray = None, B: np.ndarray = None, k: int = 30
+    ) -> float:
         """
         Calculate the precision score.
 
@@ -187,7 +191,9 @@ class Metrics:
         return np.sum(true_positive / divider) / np.count_nonzero(groundtruth)
 
     @staticmethod
-    def recall_score(R: np.ndarray, S: np.ndarray = None, B: np.ndarray = None, k: int = 30) -> float:
+    def recall_score(
+        R: np.ndarray, S: np.ndarray = None, B: np.ndarray = None, k: int = 30
+    ) -> float:
         """
         Calculate the recall score.
 
@@ -319,40 +325,71 @@ class Metrics:
         return ndcg
 
     @staticmethod
-    def w_trade_off(S: np.ndarray, B: np.ndarray, item_provider_mapper: dict, k: int = 30, lambd: float = 0.1):
+    def p_mmf(
+        S: np.ndarray, B: np.ndarray, item_provider_mapper: np.ndarray, k: int = 30
+    ):
+        """
+        Calculate the provider max-min fairness (P-MMF) score.
+
+        Parameters:
+        S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
+        B (np.ndarray): The binary relevance decision matrix of shape (n_users, n_items).
+        item_provider_mapper (np.ndarray): The item provider mapper.
+        k (int): The number of items to consider for each user. Default is 30.
+
+        Returns:
+        float: The P-MMF score.
+        """
+
+        n_users, n_items = S.shape[:2]
+        items_count = np.sum(B, axis=0)
+        n_providers = len(set(item_provider_mapper))
+        providers_count = np.unique(item_provider_mapper, return_counts=True)[1]
+
+        rho = (1 + 1 / n_providers) * providers_count / np.sum(providers_count)
+        rho = rho * n_users * k
+
+        rho_items = np.array([rho[item_provider_mapper[i]] for i in range(n_items)])
+
+        mmf = np.min(items_count / rho_items)
+        return mmf
+
+    @staticmethod
+    def w_trade_off(
+        S: np.ndarray,
+        B: np.ndarray,
+        item_provider_mapper: np.ndarray,
+        k: int = 30,
+        lambd: float = 0.1,
+    ):
         """
         Calculate the W trade-off score.
 
         Parameters:
         S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
         B (np.ndarray): The binary relevance decision matrix of shape (n_users, n_items).
-        item_provider_mapper (dict): The item provider mapper.
+        item_provider_mapper (np.ndarray): The item provider mapper.
         k (int): The number of items to consider for each user. Default is 30.
         lambd (float): The trade-off parameter. Default is 0.1.
 
         Returns:
         float: The W trade-off score.
         """
-
-        items_count = np.sum(B, axis=0)
-        n_providers = len(set(item_provider_mapper.values()))
-        providers_count = np.unique(list(item_provider_mapper.values()), return_counts=True)[1]
-
-        rho = (1 + 1 / n_providers) * providers_count / np.sum(providers_count)
-        rho_item = np.array([rho[item_provider_mapper[i]] for i in range(len(items_count))])
-
-        mmf = np.min(items_count / rho_item)
-        score = np.mean(B * S, axis=1)
+        mmf = Metrics.p_mmf(S, B, item_provider_mapper, k)
+        score = np.mean(np.sum(B * S, axis=1))
 
         return score + lambd * mmf
 
 
-def get_metric(R, S, B, top_k):
+def get_metric(R, S, B, top_k, item_provider_mapper):
     entity = {}
     entity["precision"] = Metrics.precision_score(R, B=B, k=top_k)
     entity["recall"] = Metrics.recall_score(R, B=B, k=top_k)
     entity["ndcg"] = Metrics.ndcg_score(R, B=B, k=top_k)
 
+    entity["W"] = Metrics.w_trade_off(S, B, item_provider_mapper, k=top_k, lambd=0.1)
+    entity["ndcg_fairness"] = Metrics.ndcg_fairness(S, B, k=top_k)
+    entity["p_mmf"] = Metrics.p_mmf(S, B, item_provider_mapper, k=top_k)
     entity["mdg_min_10"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.1)
     entity["mdg_min_20"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.2)
     entity["mdg_min_30"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.3)
