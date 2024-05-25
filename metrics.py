@@ -397,15 +397,19 @@ def get_metric(R, S, B, top_k, item_provider_mapper):
     entity["rrq"] = Metrics.rrq(S, B, k=top_k)
     entity["p_mmf"] = Metrics.p_mmf(R, S, B, item_provider_mapper, k=top_k)
     entity["W"] = Metrics.w_trade_off(R, S, B, item_provider_mapper, k=top_k, lambd=0.1)
+
     entity["mdg_min_10"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.1)
     entity["mdg_min_20"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.2)
     entity["mdg_min_30"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.3)
+    
     entity["mdg_max_10"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.1)
     entity["mdg_max_20"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.2)
     entity["mdg_max_30"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=-0.3)
+
     entity["u_mmf_5"] = Metrics.u_mmf(B, p_u_coverage=1, p_i_consider=0.05, k=top_k)
     entity["u_mmf_10"] = Metrics.u_mmf(B, p_u_coverage=1, p_i_consider=0.1, k=top_k)
     entity["u_mmf_15"] = Metrics.u_mmf(B, p_u_coverage=1, p_i_consider=0.15, k=top_k)
+
     entity["u_pf_5"] = Metrics.u_pf(B, p_u_coverage=1, p_i_consider=0.05, k=top_k)
     entity["u_pf_10"] = Metrics.u_pf(B, p_u_coverage=1, p_i_consider=0.1, k=top_k)
     entity["u_pf_15"] = Metrics.u_pf(B, p_u_coverage=1, p_i_consider=0.15, k=top_k)

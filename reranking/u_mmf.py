@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import cvxpy as cp
+from tqdm import trange
 
 from reranking.base import ReRankingStrategy
 
@@ -55,7 +56,7 @@ class UMMFReRanking(ReRankingStrategy):
     def optimize(self, S: np.ndarray, k: int = 30, *args, **kargs) -> np.ndarray:
         lambd = kargs.get("lambd", 0.1)
         alpha = kargs.get("alpha", 0.1)
-        eta = kargs.get("eta", 0.3)
+        eta = kargs.get("eta", 1e-3)
         interactions = kargs.get("interactions")
         p = kargs.get("p", 0.05)
 
@@ -63,7 +64,7 @@ class UMMFReRanking(ReRankingStrategy):
         interactions = self.relabel_provider(interactions, S, p)
 
         n_providers = len(np.unique(interactions[:, 3]))
-        providers_cnt = np.unique(interactions[:, 3], return_counts=True)
+        providers_cnt = np.unique(interactions[:, 3], return_counts=True)[1]
 
         rho = (1 + 1 / n_providers) * providers_cnt / np.sum(providers_cnt)
         UI_matrix = S[np.arange(n_users)]
@@ -83,34 +84,32 @@ class UMMFReRanking(ReRankingStrategy):
 
 
         result_x = []
-        for i in range(n_users):
-            mu_t = np.zeros(n_providers)
-            B_t = n_users * k * rho
 
-            sum_dual = 0
-            eta_t = eta / np.sqrt(n_users)
+        mu_t = np.zeros(n_providers)
+        B_t = n_users * k * rho
+        sum_dual = 0
+        eta_t = eta / np.sqrt(n_users)
+        gradient_cusum = np.zeros(n_providers)
+        for t in trange(n_users):
+            x_title = UI_matrix[t, :] - np.matmul(A, mu_t)
+            mask = np.matmul(A, (B_t > 0).astype(np.float32))
 
-            gradient_cusum = np.zeros(n_providers)
-            for t in range(n_users):
-                x_title = UI_matrix[t, :] - np.matmul(A, mu_t)
-                mask = np.matmul(A, (B_t > 0).astype(np.float32))
+            mask = (1.0 - mask) * -10000.0
+            x = np.argsort(x_title + mask, axis=-1)[::-1]
+            x_allocation = x[:k]
+            re_allocation = np.argsort(UI_matrix[t, x_allocation])[::-1]
+            x_allocation = x_allocation[re_allocation]
+            result_x.append(x_allocation)
 
-                mask = (1.0 - mask) * -10000.0
-                x = np.argsort(x_title + mask, axis=-1)[::-1]
-                x_allocation = x[:k]
-                re_allocation = np.argsort(UI_matrix[t, x_allocation])[::-1]
-                x_allocation = x_allocation[re_allocation]
-                result_x.append(x_allocation)
+            B_t = B_t - np.sum(A[x_allocation], axis=0, keepdims=False)
+            gradient = -np.mean(A[x_allocation], axis=0, keepdims=False) + B_t / (
+                n_users * k
+            )
 
-                B_t = B_t - np.sum(A[x_allocation], axis=0, keepdims=False)
-                gradient = -np.mean(A[x_allocation], axis=0, keepdims=False) + B_t / (
-                    n_users * k
-                )
-
-                gradient = alpha * gradient + (1 - alpha) * gradient_cusum
-                gradient_cusum = gradient
-                mu_t = self.compute_next_dual(eta, rho, mu_t, gradient, lambd)
-                sum_dual += mu_t
+            gradient = alpha * gradient + (1 - alpha) * gradient_cusum
+            gradient_cusum = gradient
+            mu_t = self.compute_next_dual(eta_t, rho, mu_t, gradient, lambd)
+            sum_dual += mu_t
 
 
         W = np.zeros((n_users, n_items))

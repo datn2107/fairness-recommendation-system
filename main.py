@@ -12,6 +12,7 @@ from data.preprocessor import (
 from metrics import get_metric
 from reranking.base import ReRanking
 from reranking.fractory import ReRankingStrategyFractory
+from reranking.u_mmf import get_item_provider_mapper
 
 
 def load_result(model_name, dataset_dir):
@@ -81,7 +82,7 @@ if __name__ == "__main__":
     # Compute the predicted score matrix
     for model_name in ["clcrec", "ccfcrec"]:
         S = load_result(model_name, dataset_dir)
-        item_provider_mapper = divide_group(test_cold_items, args.group_p)
+        item_provider_mapper = get_item_provider_mapper(S, p=args.epsilon)
 
         # Before applying reranking
         B = DataConverter.convert_score_matrix_to_relevance_matrix(S, k=top_k)
@@ -104,9 +105,9 @@ if __name__ == "__main__":
             W, time = reranking.optimize(
                 S, k=top_k, p=args.epsilon, interactions=test_cold_interaction
             )
-            S_reranked = reranking.apply_reranking_matrix(S, W)
+            # S_reranked = reranking.apply_reranking_matrix(S, W)
 
-            entity = get_metric(R, S_reranked, W, top_k, item_provider_mapper)
+            entity = get_metric(R, S, W, top_k, item_provider_mapper)
             entity["time"] = time
 
             # Save the result
