@@ -302,7 +302,7 @@ class Metrics:
         return np.mean(score)
 
     @staticmethod
-    def ndcg_fairness(S: np.ndarray, B: np.ndarray, k: int = 30):
+    def rrq(S: np.ndarray, B: np.ndarray, k: int = 30):
         """
         Calculate the NDCG fairness score.
 
@@ -326,12 +326,13 @@ class Metrics:
 
     @staticmethod
     def p_mmf(
-        S: np.ndarray, B: np.ndarray, item_provider_mapper: np.ndarray, k: int = 30
+        R: np.array, S: np.ndarray, B: np.ndarray, item_provider_mapper: np.ndarray, k: int = 30
     ):
         """
         Calculate the provider max-min fairness (P-MMF) score.
 
         Parameters:
+        R (np.ndarray): The binary relevance score matrix of shape (n_users, n_items).
         S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
         B (np.ndarray): The binary relevance decision matrix of shape (n_users, n_items).
         item_provider_mapper (np.ndarray): The item provider mapper.
@@ -340,25 +341,27 @@ class Metrics:
         Returns:
         float: The P-MMF score.
         """
-
         n_users, n_items = S.shape[:2]
-        items_count = np.sum(B, axis=0)
         n_providers = len(set(item_provider_mapper))
-        providers_count = np.unique(item_provider_mapper, return_counts=True)[1]
+
+        items_count = np.sum(R, axis=0)
+        providers_count = np.zeros(n_providers)
+        for i in range(n_items):
+            providers_count[item_provider_mapper[i]] += items_count[i]
 
         rho = (1 + 1 / n_providers) * providers_count / np.sum(providers_count)
         rho = rho * n_users * k
 
-        rho_items = np.array([rho[item_provider_mapper[i]] for i in range(n_items)])
-
+        items_count_pred = np.sum(B, axis=0)
         providers_exposure = np.zeros(n_providers)
         for i in range(n_items):
-            providers_exposure[item_provider_mapper[i]] += items_count[i] / rho_items[i]
-        mmf = np.min(providers_exposure)
+            providers_exposure[item_provider_mapper[i]] += items_count_pred[i]
+        mmf = np.min(providers_exposure / rho)
         return mmf
 
     @staticmethod
     def w_trade_off(
+        R: np.ndarray,
         S: np.ndarray,
         B: np.ndarray,
         item_provider_mapper: np.ndarray,
@@ -369,6 +372,7 @@ class Metrics:
         Calculate the W trade-off score.
 
         Parameters:
+        R (np.ndarray): The binary relevance score matrix of shape (n_users, n_items).
         S (np.ndarray): The predicted score matrix of shape (n_users, n_items).
         B (np.ndarray): The binary relevance decision matrix of shape (n_users, n_items).
         item_provider_mapper (np.ndarray): The item provider mapper.
@@ -378,7 +382,7 @@ class Metrics:
         Returns:
         float: The W trade-off score.
         """
-        mmf = Metrics.p_mmf(S, B, item_provider_mapper, k)
+        mmf = Metrics.p_mmf(R, S, B, item_provider_mapper, k)
         score = np.mean(np.sum(B * S, axis=1))
 
         return score + lambd * mmf
@@ -390,9 +394,9 @@ def get_metric(R, S, B, top_k, item_provider_mapper):
     entity["recall"] = Metrics.recall_score(R, B=B, k=top_k)
     entity["ndcg"] = Metrics.ndcg_score(R, B=B, k=top_k)
 
-    entity["W"] = Metrics.w_trade_off(S, B, item_provider_mapper, k=top_k, lambd=0.1)
-    entity["ndcg_fairness"] = Metrics.ndcg_fairness(S, B, k=top_k)
-    entity["p_mmf"] = Metrics.p_mmf(S, B, item_provider_mapper, k=top_k)
+    entity["rrq"] = Metrics.rrq(S, B, k=top_k)
+    entity["p_mmf"] = Metrics.p_mmf(R, S, B, item_provider_mapper, k=top_k)
+    entity["W"] = Metrics.w_trade_off(R, S, B, item_provider_mapper, k=top_k, lambd=0.1)
     entity["mdg_min_10"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.1)
     entity["mdg_min_20"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.2)
     entity["mdg_min_30"] = Metrics.mdg_score(S=S, B=B, k=top_k, p=0.3)
