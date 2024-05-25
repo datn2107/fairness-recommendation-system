@@ -2,9 +2,6 @@ import numpy as np
 from time import time
 from typing import Any
 from abc import ABC, abstractmethod
-from cvxpy import cp
-from mip import Model, xsum, maximize
-from ortools.linear_solver import pywraplp
 
 
 class ReRankingStrategy(ABC):
