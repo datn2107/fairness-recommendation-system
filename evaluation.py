@@ -22,13 +22,15 @@ def load_result(model_name, dataset_dir):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-dir", type=str, default="datasets")
-    parser.add_argument("--top-k", type=int, default=10)
+    parser.add_argument("--save-dir", type=str, default="results")
+    parser.add_argument("--top-k", type=int, default=30)
     parser.add_argument(
         "--methods", type=str, nargs="+", default=["PDLP", "MIP", "UMMF"]
     )
     args = parser.parse_args()
 
     dataset_dir = args.dataset_dir
+    save_dir = args.save_dir
     interactions = np.load(
         os.path.join(dataset_dir, "test_cold_interactions_provider_formated.npy")
     )
@@ -51,15 +53,15 @@ if __name__ == "__main__":
 
         entity = get_metric(R, S, B, args.top_k, item_provider_mapper)
         entity["model"] = model
-        result = pd.concat([result, entity])
+        result = pd.concat([result, pd.DataFrame([entity])])
 
         for method in args.methods:
             B = np.load(
-                os.path.join(dataset_dir, f"{model}_{method}_result_binary.npy")
+                os.path.join(dataset_dir, f"{model}_{method}_reranked_result_binary.npy")
             )
             entity = get_metric(R, S, B, args.top_k, item_provider_mapper)
             entity["model"] = model + "_" + method
-            result = pd.concat([result, entity])
+            result = pd.concat([result, pd.DataFrame([entity])])
 
-    result.to_csv(os.path.join(dataset_dir, "final_results.csv"), index=False)
+    result.to_csv(os.path.join(save_dir, "final_results.csv"), index=False)
     print(result)
