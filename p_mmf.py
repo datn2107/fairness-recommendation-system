@@ -153,7 +153,12 @@ if __name__ == "__main__":
     clcrec_result = preprocess_clcrec_result(clcrec_result)
     test_cold_interaction = relabel_provider(test_cold_interaction, clcrec_result)
     result = p_mmf_cpu(clcrec_result, test_cold_interaction, 30, 0.1, 0.1, 1e-3)
+
+    B = np.zeros_like(clcrec_result)
+    for i, x in enumerate(result):
+        B[i, x] = 1
+
     print(len(result))
 
-    metric = get_metric(R, result, result, 30)
+    metric = get_metric(R, B, B, 30)
     print(metric)
