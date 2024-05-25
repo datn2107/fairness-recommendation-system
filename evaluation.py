@@ -1,8 +1,10 @@
 import os
 import argparse
 import numpy as np
+import pandas as pd
 
 from metrics import get_metric
+from reranking.u_mmf import get_item_provider_mapper
 from data.converter import DataConverter, InteractionDataConverterStrategy
 from data.preprocessor import preprocess_clcrec_result, preprocess_ccfcrec_result
 
@@ -34,10 +36,11 @@ if __name__ == "__main__":
         os.path.join(dataset_dir, "test_cold_items.npy"), allow_pickle=True
     ).item()
 
+    data_converter = DataConverter(InteractionDataConverterStrategy())
+    result = pd.DataFrame()
     for model in ["clcrec", "ccfcrec"]:
         S = load_result(model, dataset_dir)
-        B = np.load(os.path.join(dataset_dir, f"{model}_result_binary.npy"))
-        data_converter = DataConverter(InteractionDataConverterStrategy())
+        item_provider_mapper = get_item_provider_mapper(S, p=0.05)
         R = data_converter.convert_to_relevance_matrix(
             interactions,
             rank_relevance=False,
@@ -45,9 +48,18 @@ if __name__ == "__main__":
             n_items=B.shape[1],
         )
 
+        B = np.load(os.path.join(dataset_dir, f"{model}_result_binary.npy"))
+        entity = get_metric(R, S, B, args.top_k, item_provider_mapper)
+        entity["model"] = model
+        result = pd.concat([result, entity])
+
         for method in args.methods:
             B = np.load(
                 os.path.join(dataset_dir, f"{model}_{method}_result_binary.npy")
             )
-            metric = get_metric(R, method_result, B, args.top_k)
-            print(f"{model}_{method}: {metric}")
+            entity = get_metric(R, S, B, args.top_k, item_provider_mapper)
+            entity["model"] = model + "_" + method
+            result = pd.concat([result, entity])
+
+    result.to_csv(os.path.join(dataset_dir, "results.csv"), index=False)
+    print(result)
