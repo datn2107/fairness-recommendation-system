@@ -351,7 +351,10 @@ class Metrics:
 
         rho_items = np.array([rho[item_provider_mapper[i]] for i in range(n_items)])
 
-        mmf = np.min(items_count / rho_items)
+        providers_exposure = np.zeros(n_providers)
+        for i in range(n_items):
+            providers_exposure[item_provider_mapper[i]] += items_count[i] / rho_items[i]
+        mmf = np.min(providers_exposure)
         return mmf
 
     @staticmethod
