@@ -135,7 +135,7 @@ if __name__ == "__main__":
 
     dataset_dir = args.dataset_dir
     test_cold_interaction = np.load(
-        os.path.join(dataset_dir, "test_cold_interactions_formatted.npy")
+        os.path.join(dataset_dir, "test_cold_interactions_formated.npy")
     )
     test_cold_items = np.load(
         os.path.join(dataset_dir, "test_cold_items.npy"), allow_pickle=True
@@ -153,7 +153,7 @@ if __name__ == "__main__":
     clcrec_result = preprocess_clcrec_result(clcrec_result)
     test_cold_interaction = relabel_provider(test_cold_interaction, clcrec_result)
     result = p_mmf_cpu(clcrec_result, test_cold_interaction, 30, 0.1, 0.1, 1e-3)
-    print(result.shape)
+    print(len(result))
 
     metric = get_metric(R, result, result, 30)
     print(metric)
