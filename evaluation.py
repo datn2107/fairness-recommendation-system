@@ -4,25 +4,50 @@ import numpy as np
 
 from metrics import get_metric
 from data.converter import DataConverter, InteractionDataConverterStrategy
+from data.preprocessor import preprocess_clcrec_result, preprocess_ccfcrec_result
+
+
+def load_result(model_name, dataset_dir):
+    S = np.load(os.path.join(dataset_dir, f"{model_name}_result.npy"))
+    if model_name == "clcrec":
+        S = preprocess_clcrec_result(S)
+    elif model_name == "ccfcrec":
+        S = preprocess_ccfcrec_result(S)
+
+    return S
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--matrix-path", type=str)
-    parser.add_argument("--groundtruth-interaction-path", type=str)
-    parser.add_argument("--top-k", type=int, default=30)
+    parser.add_argument("--dataset-dir", type=str, default="datasets")
+    parser.add_argument("--top-k", type=int, default=10)
+    parser.add_argument(
+        "--methods", type=str, nargs="+", default=["PDLP", "MIP", "UMMF"]
+    )
     args = parser.parse_args()
 
-    matrix = np.load(args.matrix_path)
-    groundtruth_interaction = np.load(args.groundtruth_interaction_path)
-
-    data_converter = DataConverter(InteractionDataConverterStrategy())
-    R = data_converter.convert_to_relevance_matrix(
-        groundtruth_interaction,
-        rank_relevance=False,
-        n_users=matrix.shape[0],
-        n_items=matrix.shape[1],
+    dataset_dir = args.dataset_dir
+    interactions = np.load(
+        os.path.join(dataset_dir, "test_cold_interactions_provider_formated.npy")
     )
-    S = matrix
-    B = DataConverter.convert_score_matrix_to_rank_matrix(S)
+    test_cold_items = np.load(
+        os.path.join(dataset_dir, "test_cold_items.npy"), allow_pickle=True
+    ).item()
 
-    print(get_metric(R, B, B, args.top_k))
+    for model in ["clcrec", "ccfcrec"]:
+        S = load_result(model, dataset_dir)
+        B = np.load(os.path.join(dataset_dir, f"{model}_result_binary.npy"))
+        data_converter = DataConverter(InteractionDataConverterStrategy())
+        R = data_converter.convert_to_relevance_matrix(
+            interactions,
+            rank_relevance=False,
+            n_users=B.shape[0],
+            n_items=B.shape[1],
+        )
+
+        for method in args.methods:
+            B = np.load(
+                os.path.join(dataset_dir, f"{model}_{method}_result_binary.npy")
+            )
+            metric = get_metric(R, method_result, B, args.top_k)
+            print(f"{model}_{method}: {metric}")

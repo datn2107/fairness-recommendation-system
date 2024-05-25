@@ -172,13 +172,13 @@ def p_mmf_cpu(
         MMF_batch.append(MMF)
 
     B = np.zeros((n_users, n_items))
-    for i, x in enumerate(final_result):
-        B[i, x] = 1
+    for i in range(n_users):
+        B[i, final_result[i]] = 1
 
     metric = get_metric(R, trained_preference_scores, B, 30, item_provider_mapper)
     print(metric)
 
-    W, RRQ, MMF = np.mean(W_batch), np.mean(RRQ_batch), np.mean(MMF_batch)
+    W, RRQ, MMF = np.mean(W_batch), np.mean(RRQ_batch), np.means(MMF_batch)
     print("W:%.4f RRQ: %.4f MMF: %.4f " % (W, RRQ, MMF))
     return W, RRQ, MMF, final_result
 

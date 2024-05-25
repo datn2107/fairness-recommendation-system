@@ -4,9 +4,24 @@ import numpy as np
 import pandas as pd
 
 from data.converter import DataConverter, InteractionDataConverterStrategy
-from data.preprocessor import preprocess_clcrec_result, preprocess_ccfcrec_result, divide_group
+from data.preprocessor import (
+    preprocess_clcrec_result,
+    preprocess_ccfcrec_result,
+    divide_group,
+)
 from metrics import get_metric
-from reranking import ReRanking, ReRankingStrategyFractory
+from reranking.base import ReRanking
+from reranking.fractory import ReRankingStrategyFractory
+
+
+def load_result(model_name, dataset_dir):
+    S = np.load(os.path.join(dataset_dir, f"{model_name}_result.npy"))
+    if model_name == "clcrec":
+        S = preprocess_clcrec_result(S)
+    elif model_name == "ccfcrec":
+        S = preprocess_ccfcrec_result(S)
+
+    return S
 
 
 if __name__ == "__main__":
@@ -15,11 +30,13 @@ if __name__ == "__main__":
     parser.add_argument("--dataset-dir", type=str, default="datasets")
     parser.add_argument("--top-k", type=int, default=10)
     parser.add_argument("--result-path", type=str, default="results.csv")
-    parser.add_argument("--reranked_output_path", type=str, default="reranked_result_binary.npy")
+    parser.add_argument(
+        "--reranked_output_path", type=str, default="reranked_result_binary.npy"
+    )
     parser.add_argument("--reranking", action="store_true")
     parser.add_argument("--epsilon", type=float, default=30)
     parser.add_argument("--group-p", type=float, default=0.7)
-    parser.add_argument("--strategy-name", type=str, default="worst_off_number_of_item_or_tools")
+    parser.add_argument("--strategy-name", type=str, default="ummf")
     parser.add_argument("--strategy-type", type=str, default="SAT")
     args = parser.parse_args()
 
@@ -57,32 +74,23 @@ if __name__ == "__main__":
         n_items=len(test_cold_items),
     )
 
-    assert np.sum(R > 0) == test_cold_interaction.shape[0]
-
     if os.path.exists(args.result_path):
         print("Warning: The result file already exists. It will be overwritten.")
     result = pd.DataFrame()
 
     # Compute the predicted score matrix
     for model_name in ["clcrec", "ccfcrec"]:
-        # Load the predicted score matrix
-        if model_name == "clcrec":
-            S = np.load(os.path.join(dataset_dir, f"{model_name}_result_formated.npy"))
-            S = preprocess_clcrec_result(S)
-        elif model_name == "ccfcrec":
-            S = np.load(os.path.join(dataset_dir, f"{model_name}_result.npy"))
-            S = preprocess_ccfcrec_result(S)
-        else:
-            raise ValueError("Invalid model name.")
+        S = load_result(model_name, dataset_dir)
+        item_provider_mapper = divide_group(test_cold_items, args.group_p)
 
         # Before applying reranking
-        item_provider_mapper = divide_group(test_cold_items, args.group_p)
         B = DataConverter.convert_score_matrix_to_relevance_matrix(S, k=top_k)
         entity = get_metric(R, S, B, top_k, item_provider_mapper)
 
+        # Save the result
         df_entity = pd.DataFrame([entity])
         result = pd.concat([result, df_entity], ignore_index=True)
-        
+
         np.save(os.path.join(save_dir, f"{model_name}_result_binary.npy"), B)
         print(model_name.upper())
         print(entity)
@@ -90,19 +98,25 @@ if __name__ == "__main__":
         # Apply reranking
         if args.reranking:
             reranking = ReRanking(ReRankingStrategyFractory.create(args.strategy_name))
-            W, time = reranking.optimize(S, k=top_k, epsilon=args.epsilon, strategy_type=args.strategy_type)
+            # W, time = reranking.optimize(
+            #     S, k=top_k, epsilon=args.epsilon, strategy_type=args.strategy_type
+            # )
+            W, time = reranking.optimize(
+                S, k=top_k, p=args.epsilon, interactions=test_cold_interaction
+            )
             S_reranked = reranking.apply_reranking_matrix(S, W)
 
             entity = get_metric(R, S_reranked, W, top_k, item_provider_mapper)
             entity["time"] = time
 
+            # Save the result
             df_entity = pd.DataFrame([entity])
             result = pd.concat([result, df_entity], ignore_index=True)
 
             dir = os.path.dirname(args.reranked_output_path)
             basename = os.path.basename(args.reranked_output_path)
-            np.save(os.path.join(dir, f"{model_name}_{basename}"), W)
 
+            np.save(os.path.join(dir, f"{model_name}_{basename}"), W)
             print(model_name.upper() + " RERANKED")
             print(entity)
 
