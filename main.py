@@ -99,12 +99,14 @@ if __name__ == "__main__":
         # Apply reranking
         if args.reranking:
             reranking = ReRanking(ReRankingStrategyFractory.create(args.strategy_name))
-            # W, time = reranking.optimize(
-            #     S, k=top_k, epsilon=args.epsilon, strategy_type=args.strategy_type
-            # )
-            W, time = reranking.optimize(
-                S, k=top_k, p=args.epsilon, interactions=test_cold_interaction
-            )
+            if args.strategy_name == "ummf":
+                W, time = reranking.optimize(
+                    S, k=top_k, p=args.epsilon, interactions=test_cold_interaction
+                )
+            else:
+                W, time = reranking.optimize(
+                    S, k=top_k, epsilon=args.epsilon, strategy_type=args.strategy_type
+                )
             # S_reranked = reranking.apply_reranking_matrix(S, W)
 
             entity = get_metric(R, S, W, top_k, item_provider_mapper)

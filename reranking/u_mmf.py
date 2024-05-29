@@ -11,17 +11,17 @@ def get_item_provider_mapper(S: np.ndarray, p=0.05):
     items_id_sorted = np.argsort(items_count)
 
     item_interval = int(len(items_id_sorted) * p)
-    provider_id = np.zeros(len(items_id_sorted), dtype=np.int32)
+    item2provider = np.zeros(len(items_id_sorted), dtype=np.int32)
     for i, s in enumerate(range(0, len(items_id_sorted), item_interval)):
-        provider_id[items_id_sorted[s : s + item_interval]] = i
-    return provider_id
+        item2provider[items_id_sorted[s : s + item_interval]] = i
+    return item2provider
 
 
 class UMMFReRanking(ReRankingStrategy):
     def relabel_provider(self, interactions, preference_scores=None, p=0.05):
         if preference_scores is not None:
-            provider_id = get_item_provider_mapper(preference_scores, p)
-            interactions[:, 3] = provider_id[interactions[:, 1]]
+            item2provider = get_item_provider_mapper(preference_scores, p)
+            interactions[:, 3] = item2provider[interactions[:, 1]]
 
         interactions[:, 3] = np.unique(interactions[:, 3], return_inverse=True)[1]
         return interactions
@@ -61,6 +61,7 @@ class UMMFReRanking(ReRankingStrategy):
         p = kargs.get("p", 0.05)
 
         n_users, n_items = S.shape[:2]
+        item2provider = get_item_provider_mapper(S, p)
         interactions = self.relabel_provider(interactions, S, p)
 
         n_providers = len(np.unique(interactions[:, 3]))
@@ -73,9 +74,6 @@ class UMMFReRanking(ReRankingStrategy):
         UI_matrix = self.sigmoid(UI_matrix)
 
         # set item-provider matrix
-        set_item_provider = set(zip(interactions[:, 1], interactions[:, 3]))
-        item2provider = {x: y for x, y in set_item_provider}
-
         A = np.zeros((n_items, n_providers))
         iid2pid = []
         for i in range(n_items):
