@@ -80,7 +80,7 @@ if __name__ == "__main__":
     result = pd.DataFrame()
 
     # Compute the predicted score matrix
-    for model_name in ["clcrec", "ccfcrec"]:
+    for model_name in ["clcrec"]:
         S = load_result(model_name, dataset_dir)
         item_provider_mapper = get_item_provider_mapper(S, p=args.epsilon)
 
